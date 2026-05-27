@@ -1,0 +1,23 @@
+# Secrets / local env
+.env
+*.env
+.env.*
+
+# Runtime data
+data/mi/state/*.json
+data/mi/ledgers/*.jsonl
+data/mi/fills/*.jsonl
+data/mi/candles/*.json
+reports/mi/daily/*.md
+reports/mi/*.json
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# OS/editor
+.DS_Store
+*.swp
