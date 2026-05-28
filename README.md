@@ -26,6 +26,12 @@ Private repository for the Hermes Mi maincoin perpetual strategy.
 - Guardian manages local hard stop, breakeven state, partial TP, and trailing state
 - Runtime snapshots, fills, ledgers, and daily briefs are local-only and ignored by Git
 
+## Docs
+
+- `docs/HERMES_MI_V1_0_ARCHITECTURE.md` — current v1.0.0 architecture and live gates.
+- `docs/RUNBOOK.md` — operations, cron, pause/resume, verification, GitHub sync.
+- `docs/HERMES_MI_V0_1_INFRA_PLAN.md` — historical v0.1 bootstrap design.
+
 ## Runtime commands
 
 ```bash

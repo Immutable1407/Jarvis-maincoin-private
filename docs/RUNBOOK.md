@@ -26,9 +26,11 @@ hermes cron list --all
 
 Relevant jobs:
 
-- `bc97ef299d9f` — live cycle
-- `dcb5a389e2d4` — guardian
-- `4d7fbee50ff9` — healthcheck
+- `bc97ef299d9f` — v1.0.0 live cycle, every 15m, local.
+- `dcb5a389e2d4` — guardian, every 5m, local.
+- `4d7fbee50ff9` — healthcheck, every 120m, local.
+- `aded3c6554f3` — fill sync, every 10m, local.
+- `65b8d9feb0b3` — daily maincoin brief, 21:00 UTC+8, origin chat.
 
 ## Pause Hermes Mi trading
 
@@ -44,6 +46,8 @@ Keep guardian running until all positions are flat. To pause all Hermes Mi jobs:
 hermes cron pause bc97ef299d9f
 hermes cron pause dcb5a389e2d4
 hermes cron pause 4d7fbee50ff9
+hermes cron pause aded3c6554f3
+hermes cron pause 65b8d9feb0b3
 ```
 
 ## Resume Hermes Mi trading
@@ -51,32 +55,60 @@ hermes cron pause 4d7fbee50ff9
 ```bash
 hermes cron resume 4d7fbee50ff9
 hermes cron resume dcb5a389e2d4
+hermes cron resume aded3c6554f3
+hermes cron resume 65b8d9feb0b3
 hermes cron resume bc97ef299d9f
 ```
 
-## Logs and ledgers
+## Manual verification
 
-Runtime ledgers are local-only and not committed:
+```bash
+cd /root/jarvis-mi
+export PYTHONPATH=/root/jarvis-mi
+python3 -m compileall -q jarvis_mi scripts/mi tests/mi
+python3 -m unittest discover -s tests/mi -v
+python3 scripts/mi/mi_healthcheck.py
+python3 scripts/mi/mi_guardian.py
+python3 scripts/mi/mi_sync_fills.py
+python3 scripts/mi/mi_daily_review.py
+```
+
+`python3 scripts/mi/mi_live_cycle.py` can place a live order if a strict v1.0.0 signal passes. Pause `bc97ef299d9f` before manual live-cycle testing if no new entries are desired.
+
+## Logs, ledgers, and reports
+
+Runtime ledgers and reports are local-only and not committed:
 
 ```bash
 tail -n 20 /root/jarvis-mi/data/mi/ledgers/decisions.jsonl
 tail -n 20 /root/jarvis-mi/data/mi/ledgers/trades.jsonl
 tail -n 20 /root/jarvis-mi/data/mi/ledgers/guardian.jsonl
 tail -n 20 /root/jarvis-mi/data/mi/ledgers/healthcheck.jsonl
+tail -n 20 /root/jarvis-mi/data/mi/ledgers/fills.jsonl
+ls -R /root/jarvis-mi/data/mi/snapshots | tail
+ls /root/jarvis-mi/reports/mi/daily
 ```
 
 ## GitHub sync
-
-```bash
-cd /root/jarvis-mi
-git status --short
-git add AGENTS.md README.md docs jarvis_mi scripts tests .gitignore
-git commit -m 'docs: update Hermes Mi runbook'
-git push
-```
 
 Remote must use:
 
 ```bash
 git@github.com-jarvis:Immutable1407/Jarvis-maincoin-private.git
 ```
+
+Safe sync checklist:
+
+```bash
+cd /root/jarvis-mi
+python3 -m compileall -q jarvis_mi scripts/mi tests/mi
+python3 -m unittest discover -s tests/mi -v
+git status --short
+git add AGENTS.md README.md docs jarvis_mi scripts tests .gitignore
+git diff --cached --name-only
+# confirm no /data, /reports, .env*, .jsonl, account snapshots, fills, or ledgers are staged
+git commit -m 'docs: update Hermes Mi docs'
+git push
+```
+
+Private GitHub is not a secret vault. Never commit credentials or runtime trading/account data.
