@@ -80,13 +80,19 @@ def run_live_cycle() -> dict:
     candidates = [s for s in signals if s.side]
     candidates.sort(key=lambda s: s.score, reverse=True)
     if not candidates:
-        rec = {"event": "NO_TRADE", "reason": "no_v1_0_candidate", "signals": [s.__dict__ for s in signals], **base_snapshot}
+        rec = {"event": "NO_TRADE", "reason": "no_v1_1_candidate", "signals": [s.__dict__ for s in signals], **base_snapshot}
         rec["snapshot"] = save_snapshot({**base_snapshot, "signals": [s.__dict__ for s in signals], "decision": rec})
         append_jsonl("decisions.jsonl", rec)
         return rec
 
     selected = candidates[0]
-    ok, portfolio_reasons = portfolio_allows_entry(positions, selected, cfg.active_max_positions, cfg.enable_second_position)
+    ok, portfolio_reasons = portfolio_allows_entry(
+        positions,
+        selected,
+        cfg.active_max_positions,
+        cfg.enable_second_position,
+        allow_mixed_direction_portfolio=cfg.allow_mixed_direction_portfolio,
+    )
     if not ok:
         rec = {"event": "NO_TRADE", "reason": "portfolio_gate", "portfolio_reasons": portfolio_reasons, "selected": selected.__dict__, **base_snapshot}
         rec["snapshot"] = save_snapshot({**base_snapshot, "signals": [s.__dict__ for s in signals], "decision": rec})
@@ -102,7 +108,7 @@ def run_live_cycle() -> dict:
         append_jsonl("decisions.jsonl", rec)
         return rec
 
-    trade = execute_entry(client, cfg, instruments[selected.inst_id], selected, equity, risk_decision=risk_decision)
+    trade = execute_entry(client, cfg, instruments[selected.inst_id], selected, equity, risk_decision=risk_decision, positions=positions)
     rec = {"event": "TRADE_ATTEMPTED", "selected": selected.__dict__, "risk_decision": risk_decision.to_dict(), "trade": trade, **base_snapshot}
     rec["snapshot"] = save_snapshot({**base_snapshot, "signals": [s.__dict__ for s in signals], "decision": rec})
     append_jsonl("decisions.jsonl", rec)

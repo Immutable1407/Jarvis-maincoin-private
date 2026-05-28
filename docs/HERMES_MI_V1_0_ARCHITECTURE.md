@@ -1,8 +1,8 @@
-# Hermes Mi v1.0.0 Maincoin Strategy Architecture
+# Hermes Mi v1.1.0 Maincoin Strategy Architecture
 
 ## Purpose
 
-Hermes Mi is a dedicated OKX maincoin perpetual strategy isolated from BTC-AHR999 and Jarvis v4 altcoin trading. v1.0.0 is the first complete guarded loop for BTC/ETH/SOL/BNB only.
+Hermes Mi is a dedicated OKX maincoin perpetual strategy isolated from BTC-AHR999 and Jarvis v4 altcoin trading. v1.1.0 upgrades the first complete guarded loop from one conservative slot to dynamic two-slot maincoin compounding for BTC/ETH/SOL/BNB only.
 
 ## Account and instrument boundaries
 
@@ -20,14 +20,28 @@ Every private read/write path must verify UID/mainUid before acting. Non-whiteli
 
 ## Live gates
 
-- `strategy_tag = mi_v1_0_0_initial_complete`
-- `active_max_positions = 1`
-- `enable_second_position = False`
+- `strategy_tag = mi_v1_1_0_dynamic_two_slot`
+- `active_max_positions = 2`
+- `enable_second_position = True`
 - `enable_rotation = False`
+- `portfolio_margin_cap_pct = 0.60`
+- `single_position_margin_cap_pct = 0.35`
+- `second_position_margin_cap_pct = 0.30`
+- `allow_mixed_direction_portfolio = False`
 - margin mode: cross
 - hot path: deterministic Python only, no LLM order decisioning
 
-The codebase contains portfolio and rotation modules, but live risk remains one active position until enough data justifies opening the next gate.
+v1.1.0 intentionally moves from low-margin/high-leverage to higher-margin/moderate-leverage exposure. The goal is a higher compounding slope without carrying the tail risk of 60% margin at 20x.
+
+## Risk ladder
+
+- paused: 0x, 0% margin, no new entries
+- probe: 3x-5x, 5%-8% margin, 0.4%-0.8% max loss
+- reduced: 5x-8x, 12%-18% margin, 1.0%-1.8% max loss
+- normal: about 10x, 25% margin, about 3% max loss
+- strong: up to 12x, 32%-35% margin, about 3.5%-4.0% max loss
+
+High volatility (`ATR / price > 3.5%`) caps leverage to 8x and scales margin/loss budgets down by 40%.
 
 ## Live cycle data flow
 
@@ -51,10 +65,11 @@ The codebase contains portfolio and rotation modules, but live risk remains one 
    - mixed state
 9. Score layered signals with observe/setup/trigger reason codes.
 10. Apply market-state direction gate.
-11. Apply portfolio gate.
+11. Apply portfolio gate: max two positions, no duplicate symbol, no mixed long/short by default.
 12. Compute dynamic risk decision.
-13. Submit market entry and standalone reduce-only stop only if all gates pass.
-14. Save local snapshot and decision ledger.
+13. Compute size and enforce portfolio margin guard inside `execute_entry`.
+14. Submit market entry and standalone reduce-only stop only if all gates pass.
+15. Save local snapshot and decision ledger.
 
 ## Guardian and exits
 
@@ -68,12 +83,12 @@ The codebase contains portfolio and rotation modules, but live risk remains one 
 - per-action error isolation so one failed partial TP does not stop guardian protection;
 - exit state keyed by instrument, direction, and average price to avoid stale state reuse.
 
-The entry path still places an exchange-side standalone hard stop. Breakeven/trailing are local guardian-enforced in v1.0.0; exchange-side cancel/replace hardening is future work.
+The entry path still places an exchange-side standalone hard stop. Breakeven/trailing are local guardian-enforced; exchange-side cancel/replace hardening is future work.
 
 ## Fill sync and reports
 
 - `scripts/mi/mi_sync_fills.py`: syncs OKX fills every 10m to local ledgers.
-- `scripts/mi/mi_daily_review.py`: emits a concise daily maincoin brief.
+- `scripts/mi/mi_daily_review.py`: emits a concise daily maincoin brief with v1.1.0 status, max positions, portfolio margin estimate, and blocked decision count.
 - Runtime data lives under `/root/jarvis-mi/data/` and `/root/jarvis-mi/reports/` and must never be committed.
 
 ## Cron jobs
@@ -82,7 +97,7 @@ The entry path still places an exchange-side standalone hard stop. Breakeven/tra
 - `dcb5a389e2d4` — guardian, every 5m, local delivery.
 - `4d7fbee50ff9` — healthcheck, every 120m, local delivery.
 - `aded3c6554f3` — fill sync, every 10m, local delivery.
-- `65b8d9feb0b3` — daily maincoin brief, 21:00 UTC+8, delivered to origin chat.
+- `65b8d9feb0b3` — daily maincoin brief, 21:00 UTC+8, delivered to Feishu.
 
 ## Verification
 
@@ -104,6 +119,6 @@ python3 scripts/mi/mi_daily_review.py
 
 - Private repo: `Immutable1407/Jarvis-maincoin-private`
 - Remote: `git@github.com-jarvis:Immutable1407/Jarvis-maincoin-private.git`
-- Release tag: `v1.0.0`
+- Release tag: `v1.1.0`
 
 Before pushing, scan staged files for secrets and confirm no `/data/`, `/reports/`, `.env*`, `.jsonl`, account snapshots, fills, or ledgers are committed.

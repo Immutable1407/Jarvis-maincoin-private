@@ -38,23 +38,27 @@ class MiConfig:
     allowed_insts: tuple[str, ...]
     td_mode: str = "cross"
     max_positions: int = 1
-    default_leverage: int = 20
-    margin_pct: float = 0.06
+    default_leverage: int = 10
+    margin_pct: float = 0.25
     min_margin_pct: float = 0.05
-    max_margin_pct: float = 0.08
-    max_loss_pct: float = 0.012
+    max_margin_pct: float = 0.35
+    max_loss_pct: float = 0.03
     min_expected_r: float = 1.5
-    max_daily_realized_loss_pct: float = 0.06
-    strategy_tag: str = "mi_v1_0_0_initial_complete"
-    # v1.0.0 feature flags: code is complete; higher-risk functions can be gated live.
+    max_daily_realized_loss_pct: float = 0.10
+    strategy_tag: str = "mi_v1_1_0_dynamic_two_slot"
+    # v1.1.0 feature flags: two-slot maincoin compounding with portfolio hard caps.
     enable_breakeven: bool = True
     enable_partial_tp: bool = True
     enable_trailing: bool = True
     enable_rotation: bool = False
-    enable_second_position: bool = False
+    enable_second_position: bool = True
     enable_dynamic_leverage: bool = True
     enable_market_state_exit: bool = True
-    active_max_positions: int = 1
+    active_max_positions: int = 2
+    portfolio_margin_cap_pct: float = 0.60
+    single_position_margin_cap_pct: float = 0.35
+    second_position_margin_cap_pct: float = 0.30
+    allow_mixed_direction_portfolio: bool = False
 
     @classmethod
     def from_env(cls) -> "MiConfig":

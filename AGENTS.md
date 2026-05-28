@@ -9,19 +9,21 @@
 - Runtime data under `data/` and reports under `reports/` are not committed.
 - LLMs do not enter the hot path. Strategy loops are pure Python.
 
-## v1.0.0 live gates
+## v1.1.0 live gates
 
-- Strategy tag: `mi_v1_0_0_initial_complete`.
-- `active_max_positions=1` live by default.
-- Second-position and rotation modules exist but remain disabled by default.
+- Strategy tag: `mi_v1_1_0_dynamic_two_slot`.
+- `active_max_positions=2` live by default.
+- Second position is enabled; rotation remains disabled by default.
+- Portfolio margin hard cap is 60% of equity; single-position cap is 35%; second-position cap is 30%.
+- Mixed long/short portfolios are blocked by default.
 - Market-state gate blocks new entries during crash/no-trade states.
-- Dynamic risk engine adjusts leverage/margin/loss cap from market state, signal quality, volatility, and resonance.
+- Dynamic risk engine uses higher margin with moderate 3x-12x leverage from market state, signal quality, volatility, and resonance.
 - Guardian enforces local hard stop, breakeven state, partial TP, and trailing state. Original exchange-side hard stop remains placed on entry.
 - Fill sync, snapshots, ledgers, and daily briefs are runtime-private.
 
 ## Docs pointer
 
-- `docs/HERMES_MI_V1_0_ARCHITECTURE.md` — current v1.0.0 architecture, data flow, gates, cron jobs.
+- `docs/HERMES_MI_V1_0_ARCHITECTURE.md` — current v1.1.0 architecture, data flow, gates, cron jobs.
 - `docs/RUNBOOK.md` — operations, pause/resume, verification, GitHub sync.
 - `docs/HERMES_MI_V0_1_INFRA_PLAN.md` — historical v0.1 bootstrap reference only.
 
@@ -34,18 +36,18 @@ python3 -m compileall -q jarvis_mi scripts/mi tests/mi
 python3 -m unittest discover -s tests/mi -v
 python3 scripts/mi/mi_healthcheck.py
 python3 scripts/mi/mi_guardian.py
-python3 scripts/mi/mi_live_cycle.py  # can place a small live order if v1.0.0 signal passes
+python3 scripts/mi/mi_live_cycle.py  # can place a live order if v1.1.0 signal and portfolio gates pass
 python3 scripts/mi/mi_sync_fills.py
 python3 scripts/mi/mi_daily_review.py
 ```
 
 ## Cron jobs
 
-- `bc97ef299d9f` — Hermes Mi v1.0.0 maincoin live cycle, every 15m, local, `jarvis_mi_live_cycle.sh`.
+- `bc97ef299d9f` — Hermes Mi v1.1.0 maincoin live cycle, every 15m, local, `jarvis_mi_live_cycle.sh`.
 - `dcb5a389e2d4` — Hermes Mi guardian, every 5m, local, `jarvis_mi_guardian.sh`.
 - `4d7fbee50ff9` — Hermes Mi healthcheck, every 120m, local, `jarvis_mi_healthcheck.sh`.
 - `aded3c6554f3` — Hermes Mi fill sync, every 10m, local, `jarvis_mi_sync_fills.sh`.
-- `65b8d9feb0b3` — Hermes Mi daily maincoin brief, 21:00 UTC+8, delivered to origin chat, `jarvis_mi_daily_review.sh`.
+- `65b8d9feb0b3` — Hermes Mi daily maincoin brief, 21:00 UTC+8, delivered to Feishu, `jarvis_mi_daily_review.sh`.
 
 ## GitHub sync
 

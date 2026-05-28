@@ -5,6 +5,7 @@ from .config_mi import MiConfig
 from .indicators import fmt_step
 from .ledger import append_jsonl, utc_now
 from .okx_mi_client import OKXMiClient
+from .portfolio import portfolio_allows_sized_entry
 from .sizing import compute_size, SizeDecision
 
 
@@ -24,7 +25,7 @@ def format_price(px: float, tick_sz: str) -> str:
     return fmt_step(px, tick_sz)
 
 
-def execute_entry(client: OKXMiClient, cfg: MiConfig, inst: dict, signal, equity: float, risk_decision=None) -> dict:
+def execute_entry(client: OKXMiClient, cfg: MiConfig, inst: dict, signal, equity: float, risk_decision=None, positions: list[dict] | None = None) -> dict:
     assert_mi_account(client, cfg)
     assert_allowed_inst(signal.inst_id, cfg)
     direction = signal.side
@@ -44,8 +45,26 @@ def execute_entry(client: OKXMiClient, cfg: MiConfig, inst: dict, signal, equity
         margin_pct=margin_pct,
         max_loss_pct=max_loss_pct,
     )
-    if size.margin > equity * cfg.max_margin_pct:
-        raise RuntimeError(f"margin cap exceeded: {size.margin:.4f} > {equity * cfg.max_margin_pct:.4f}")
+    single_cap = float(getattr(cfg, "single_position_margin_cap_pct", cfg.max_margin_pct))
+    if size.margin > equity * single_cap:
+        raise RuntimeError(f"single margin cap exceeded: {size.margin:.4f} > {equity * single_cap:.4f}")
+    if positions is not None:
+        ok, portfolio_reasons = portfolio_allows_sized_entry(
+            positions=positions,
+            signal=signal,
+            new_margin=size.margin,
+            equity=equity,
+            active_max_positions=getattr(cfg, "active_max_positions", cfg.max_positions),
+            enable_second_position=getattr(cfg, "enable_second_position", False),
+            portfolio_margin_cap_pct=getattr(cfg, "portfolio_margin_cap_pct", 0.60),
+            single_position_margin_cap_pct=single_cap,
+            second_position_margin_cap_pct=getattr(cfg, "second_position_margin_cap_pct", 0.30),
+            allow_mixed_direction_portfolio=getattr(cfg, "allow_mixed_direction_portfolio", False),
+        )
+        if not ok:
+            raise RuntimeError(f"portfolio margin guard blocked entry: {portfolio_reasons}")
+    else:
+        portfolio_reasons = ["portfolio_positions_not_supplied"]
     if size.stop_loss_usdt > equity * max_loss_pct * 1.02:
         raise RuntimeError("risk cap exceeded after sizing")
     pos_side = pos_side_for(direction)
@@ -66,6 +85,7 @@ def execute_entry(client: OKXMiClient, cfg: MiConfig, inst: dict, signal, equity
         "score": signal.score,
         "reason": signal.reason,
         "sizing": size.__dict__,
+        "portfolio_reasons": portfolio_reasons,
         "order": order.get("data"),
         "stop_algo": stop.get("data"),
         "strategy_tag": cfg.strategy_tag,

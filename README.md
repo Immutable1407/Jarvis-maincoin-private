@@ -4,7 +4,7 @@ Private repository for the Hermes Mi maincoin perpetual strategy.
 
 ## Current version
 
-`v1.0.0-initial-complete` is deployed on the VPS at `/root/jarvis-mi`.
+`v1.1.0-dynamic-two-slot` is deployed on the VPS at `/root/jarvis-mi`.
 
 ## Scope
 
@@ -14,12 +14,16 @@ Private repository for the Hermes Mi maincoin perpetual strategy.
 - Timeframes: 1h market/trend state, 15m trigger/guardian checks
 - Hot path: deterministic Python only; no LLM in order execution
 
-## v1.0.0 live gates
+## v1.1.0 live gates
 
-- Active live positions: 1
-- Code supports second-position/rotation modules, but both remain disabled by default
+- Active live positions: max 2
+- Second position enabled; rotation remains disabled by default
 - Margin mode: cross
-- Dynamic risk engine: 5x-20x depending on market state, signal quality, volatility, and resonance
+- Portfolio margin hard cap: 60% of equity across both positions
+- Single-position margin cap: 35% of equity
+- Second-position margin cap: 30% of equity
+- Mixed long/short portfolios are blocked by default
+- Dynamic risk engine: higher margin with moderate 3x-12x leverage, depending on market state, signal quality, volatility, and resonance
 - Max theoretical stop loss remains capped by risk engine / sizing guard
 - Market-state gate blocks new entries during crash/no-trade states
 - Resonance engine scores BTC/ETH/SOL/BNB alignment/divergence
@@ -28,7 +32,7 @@ Private repository for the Hermes Mi maincoin perpetual strategy.
 
 ## Docs
 
-- `docs/HERMES_MI_V1_0_ARCHITECTURE.md` — current v1.0.0 architecture and live gates.
+- `docs/HERMES_MI_V1_0_ARCHITECTURE.md` — current v1.1.0 architecture and live gates.
 - `docs/RUNBOOK.md` — operations, cron, pause/resume, verification, GitHub sync.
 - `docs/HERMES_MI_V0_1_INFRA_PLAN.md` — historical v0.1 bootstrap design.
 
@@ -46,15 +50,15 @@ python3 scripts/mi/mi_sync_fills.py
 python3 scripts/mi/mi_daily_review.py
 ```
 
-`mi_live_cycle.py` can place a small live order when a strict v1.0.0 signal passes.
+`mi_live_cycle.py` can place a live order when a strict v1.1.0 signal passes and all portfolio margin gates allow it.
 
 ## Cron jobs
 
-- `bc97ef299d9f` — v1.0.0 live cycle, every 15m, local
+- `bc97ef299d9f` — v1.1.0 live cycle, every 15m, local
 - `dcb5a389e2d4` — guardian, every 5m, local
 - `4d7fbee50ff9` — healthcheck, every 120m, local
 - `aded3c6554f3` — fill sync, every 10m, local
-- `65b8d9feb0b3` — daily maincoin brief, 21:00 UTC+8, origin chat
+- `65b8d9feb0b3` — daily maincoin brief, 21:00 UTC+8, Feishu
 
 ## Secrets
 

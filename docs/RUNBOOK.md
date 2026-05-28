@@ -14,7 +14,7 @@ cfg = MiConfig.from_env()
 c = OKXMiClient(cfg)
 print(assert_mi_account(c, cfg))
 print(c.usdt_equity())
-print([{k:p.get(k) for k in ['instId','pos','posSide','mgnMode','avgPx','markPx','upl']} for p in c.open_positions()])
+print([{k:p.get(k) for k in ['instId','pos','posSide','mgnMode','avgPx','markPx','upl','imr','lever']} for p in c.open_positions()])
 PY
 ```
 
@@ -26,11 +26,11 @@ hermes cron list --all
 
 Relevant jobs:
 
-- `bc97ef299d9f` — v1.0.0 live cycle, every 15m, local.
+- `bc97ef299d9f` — v1.1.0 live cycle, every 15m, local.
 - `dcb5a389e2d4` — guardian, every 5m, local.
 - `4d7fbee50ff9` — healthcheck, every 120m, local.
 - `aded3c6554f3` — fill sync, every 10m, local.
-- `65b8d9feb0b3` — daily maincoin brief, 21:00 UTC+8, origin chat.
+- `65b8d9feb0b3` — daily maincoin brief, 21:00 UTC+8, Feishu.
 
 ## Pause Hermes Mi trading
 
@@ -73,7 +73,7 @@ python3 scripts/mi/mi_sync_fills.py
 python3 scripts/mi/mi_daily_review.py
 ```
 
-`python3 scripts/mi/mi_live_cycle.py` can place a live order if a strict v1.0.0 signal passes. Pause `bc97ef299d9f` before manual live-cycle testing if no new entries are desired.
+`python3 scripts/mi/mi_live_cycle.py` can place a live order if a strict v1.1.0 signal passes. Pause `bc97ef299d9f` before manual live-cycle testing if no new entries are desired.
 
 ## Logs, ledgers, and reports
 
@@ -107,7 +107,7 @@ git status --short
 git add AGENTS.md README.md docs jarvis_mi scripts tests .gitignore
 git diff --cached --name-only
 # confirm no /data, /reports, .env*, .jsonl, account snapshots, fills, or ledgers are staged
-git commit -m 'docs: update Hermes Mi docs'
+git commit -m 'feat(mi): release v1.1.0 dynamic two-slot compounding'
 git push
 ```
 

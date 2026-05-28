@@ -6,8 +6,8 @@ class TestRiskEngine(unittest.TestCase):
     def test_chop_reduces_leverage(self):
         s = MarketState('chop','selective','both','slow','half',['x'])
         d = decide_risk(s, signal_score=80, volatility_pct=0.02, equity=100, recent_stopouts=0)
-        self.assertLessEqual(d.leverage, 10)
-        self.assertLess(d.margin_pct, 0.06)
+        self.assertLessEqual(d.leverage, 8)
+        self.assertLessEqual(d.margin_pct, 0.18)
 
     def test_crash_pauses(self):
         s = MarketState('crash','decay','no_trade','pause','zero',['x'])
