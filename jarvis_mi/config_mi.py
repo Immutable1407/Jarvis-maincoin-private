@@ -45,7 +45,16 @@ class MiConfig:
     max_loss_pct: float = 0.012
     min_expected_r: float = 1.5
     max_daily_realized_loss_pct: float = 0.06
-    strategy_tag: str = "mi_v0_1_trend_bootstrap"
+    strategy_tag: str = "mi_v1_0_0_initial_complete"
+    # v1.0.0 feature flags: code is complete; higher-risk functions can be gated live.
+    enable_breakeven: bool = True
+    enable_partial_tp: bool = True
+    enable_trailing: bool = True
+    enable_rotation: bool = False
+    enable_second_position: bool = False
+    enable_dynamic_leverage: bool = True
+    enable_market_state_exit: bool = True
+    active_max_positions: int = 1
 
     @classmethod
     def from_env(cls) -> "MiConfig":

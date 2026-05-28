@@ -40,7 +40,7 @@ def evaluate_inst(inst_id: str, h1: list[dict[str, float]], m15: list[dict[str, 
     if h1_bull and m_break_long:
         side = "long"
         score = 70
-        reasons += ["h1_bull", "m15_long_trigger"]
+        reasons += ["observe_trend_strength", "setup_h1_bull", "trigger_m15_long"]
         stop = min(recent_low, price - 1.2 * atrv)
         if btc_bias == "bear" and inst_id != "BTC-USDT-SWAP":
             score -= 20
@@ -51,7 +51,7 @@ def evaluate_inst(inst_id: str, h1: list[dict[str, float]], m15: list[dict[str, 
     elif h1_bear and m_break_short:
         side = "short"
         score = 70
-        reasons += ["h1_bear", "m15_short_trigger"]
+        reasons += ["observe_trend_weakness", "setup_h1_bear", "trigger_m15_short"]
         stop = max(recent_high, price + 1.2 * atrv)
         if btc_bias == "bull" and inst_id != "BTC-USDT-SWAP":
             score -= 20

@@ -4,12 +4,8 @@
 .env.*
 
 # Runtime data
-data/mi/state/*.json
-data/mi/ledgers/*.jsonl
-data/mi/fills/*.jsonl
-data/mi/candles/*.json
-reports/mi/daily/*.md
-reports/mi/*.json
+/data/
+/reports/
 
 # Python
 __pycache__/

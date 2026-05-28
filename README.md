@@ -4,28 +4,27 @@ Private repository for the Hermes Mi maincoin perpetual strategy.
 
 ## Current version
 
-`v0.1.0` live bootstrap is deployed on the VPS at `/root/jarvis-mi`.
+`v1.0.0-initial-complete` is deployed on the VPS at `/root/jarvis-mi`.
 
 ## Scope
 
 - Dedicated OKX subaccount: Hermes Mi
 - Account UID: `845800098641991226`
 - Instruments: `BTC-USDT-SWAP`, `ETH-USDT-SWAP`, `SOL-USDT-SWAP`, `BNB-USDT-SWAP`
-- Timeframes: 1h trend filter, 15m trigger/guardian checks
-- Delivery: local cron only; no Feishu push for v0.x
+- Timeframes: 1h market/trend state, 15m trigger/guardian checks
+- Hot path: deterministic Python only; no LLM in order execution
 
-## v0.1 limits
+## v1.0.0 live gates
 
-- Max positions: 1
+- Active live positions: 1
+- Code supports second-position/rotation modules, but both remain disabled by default
 - Margin mode: cross
-- Leverage: 20x
-- Margin per trade: 6%, hard cap 8%
-- Max theoretical stop loss: 1.2% equity
-- No range trading
-- No rotation/replacement
-- No pyramiding
-- No partial TP in v0.1
-- No LLM in the hot path
+- Dynamic risk engine: 5x-20x depending on market state, signal quality, volatility, and resonance
+- Max theoretical stop loss remains capped by risk engine / sizing guard
+- Market-state gate blocks new entries during crash/no-trade states
+- Resonance engine scores BTC/ETH/SOL/BNB alignment/divergence
+- Guardian manages local hard stop, breakeven state, partial TP, and trailing state
+- Runtime snapshots, fills, ledgers, and daily briefs are local-only and ignored by Git
 
 ## Runtime commands
 
@@ -37,16 +36,20 @@ python3 -m unittest discover -s tests/mi -v
 python3 scripts/mi/mi_healthcheck.py
 python3 scripts/mi/mi_guardian.py
 python3 scripts/mi/mi_live_cycle.py
+python3 scripts/mi/mi_sync_fills.py
+python3 scripts/mi/mi_daily_review.py
 ```
 
-`mi_live_cycle.py` can place a small live order when a strict v0.1 signal passes.
+`mi_live_cycle.py` can place a small live order when a strict v1.0.0 signal passes.
 
 ## Cron jobs
 
-- `bc97ef299d9f` — live cycle, every 15m, local
+- `bc97ef299d9f` — v1.0.0 live cycle, every 15m, local
 - `dcb5a389e2d4` — guardian, every 5m, local
 - `4d7fbee50ff9` — healthcheck, every 120m, local
+- `aded3c6554f3` — fill sync, every 10m, local
+- `65b8d9feb0b3` — daily maincoin brief, 21:00 UTC+8, origin chat
 
 ## Secrets
 
-Secrets are never committed. Runtime credentials live in `/root/.hermes/.env` using `HERMES_MI_OKX_*` variables. Runtime ledgers and reports under `data/mi/` and `reports/mi/` are excluded from Git.
+Secrets are never committed. Runtime credentials live in `/root/.hermes/.env` using `HERMES_MI_OKX_*` variables. Runtime ledgers, snapshots, fills, reports, account data, and daily briefs under `data/` and `reports/` are excluded from Git.
