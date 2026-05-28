@@ -32,7 +32,7 @@ Private repository for the Hermes Mi maincoin perpetual strategy.
 
 ## Docs
 
-- `docs/HERMES_MI_V1_0_ARCHITECTURE.md` — current v1.1.0 architecture and live gates.
+- `docs/HERMES_MI_ARCHITECTURE.md` — current v1.1.0 architecture and live gates.
 - `docs/RUNBOOK.md` — operations, cron, pause/resume, verification, GitHub sync.
 - `docs/HERMES_MI_V0_1_INFRA_PLAN.md` — historical v0.1 bootstrap design.
 

@@ -23,7 +23,7 @@
 
 ## Docs pointer
 
-- `docs/HERMES_MI_V1_0_ARCHITECTURE.md` — current v1.1.0 architecture, data flow, gates, cron jobs.
+- `docs/HERMES_MI_ARCHITECTURE.md` — current v1.1.0 architecture, data flow, gates, cron jobs.
 - `docs/RUNBOOK.md` — operations, pause/resume, verification, GitHub sync.
 - `docs/HERMES_MI_V0_1_INFRA_PLAN.md` — historical v0.1 bootstrap reference only.
 
