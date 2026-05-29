@@ -45,7 +45,14 @@ class MiConfig:
     max_loss_pct: float = 0.03
     min_expected_r: float = 1.5
     max_daily_realized_loss_pct: float = 0.10
-    strategy_tag: str = "mi_v1_1_0_dynamic_two_slot"
+    strategy_tag: str = "mi_v1_2_0_three_lane_percent_engine"
+    # v1.2.0: percent-based profit baseline. Maincoin target slope should exceed
+    # altcoin's dynamic per-trade equity share, not use a fixed USDT target.
+    altcoin_profit_baseline_pct: float = 0.012
+    maincoin_profit_baseline_multiplier: float = 1.35
+    min_expected_net_profit_pct: float = 0.0162
+    taker_fee_rate: float = 0.0005
+    enable_three_lane_signals: bool = True
     # v1.1.0 feature flags: two-slot maincoin compounding with portfolio hard caps.
     enable_breakeven: bool = True
     enable_partial_tp: bool = True

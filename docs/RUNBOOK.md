@@ -26,7 +26,7 @@ hermes cron list --all
 
 Relevant jobs:
 
-- `bc97ef299d9f` — v1.1.0 live cycle, every 15m, local.
+- `bc97ef299d9f` — v1.2.0 live cycle, every 15m, local.
 - `dcb5a389e2d4` — guardian, every 5m, local.
 - `4d7fbee50ff9` — healthcheck, every 120m, local.
 - `aded3c6554f3` — fill sync, every 10m, local.
@@ -73,7 +73,7 @@ python3 scripts/mi/mi_sync_fills.py
 python3 scripts/mi/mi_daily_review.py
 ```
 
-`python3 scripts/mi/mi_live_cycle.py` can place a live order if a strict v1.1.0 signal passes. Pause `bc97ef299d9f` before manual live-cycle testing if no new entries are desired.
+`python3 scripts/mi/mi_live_cycle.py` can place a live order if a strict v1.2.0 lane signal passes portfolio and dynamic percent-profit gates. Pause `bc97ef299d9f` before manual live-cycle testing if no new entries are desired.
 
 ## Logs, ledgers, and reports
 
@@ -107,7 +107,7 @@ git status --short
 git add AGENTS.md README.md docs jarvis_mi scripts tests .gitignore
 git diff --cached --name-only
 # confirm no /data, /reports, .env*, .jsonl, account snapshots, fills, or ledgers are staged
-git commit -m 'feat(mi): release v1.1.0 dynamic two-slot compounding'
+git commit -m 'feat(mi): release v1.2.0 three-lane percent engine'
 git push
 ```
 

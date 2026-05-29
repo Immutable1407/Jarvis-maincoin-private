@@ -22,6 +22,7 @@ def decide_risk(
     equity: float,
     recent_stopouts: int = 0,
     resonance_risk_multiplier: float = 1.0,
+    strategy_lane: str = "trend_confirmed",
 ) -> RiskDecision:
     """Return v1.1.0 sizing risk for the next maincoin entry.
 
@@ -36,7 +37,11 @@ def decide_risk(
     if recent_stopouts >= 3:
         return RiskDecision(3, 0.05, 0.004, "probe", reasons + ["recent_stopouts_probe"])
 
-    if market_state.risk_budget == "probe" or signal_score < 70:
+    if strategy_lane == "range_swing":
+        lev, margin, loss, mode = 6, 0.16, 0.012, "range"
+    elif strategy_lane == "trend_probe":
+        lev, margin, loss, mode = 8, 0.14, 0.014, "probe"
+    elif market_state.risk_budget == "probe" or signal_score < 70:
         lev, margin, loss, mode = 5, 0.08, 0.008, "probe"
     elif market_state.btc_regime == "chop":
         lev, margin, loss, mode = 6, 0.14, 0.012, "reduced"
@@ -58,4 +63,4 @@ def decide_risk(
     margin *= multiplier
     loss *= multiplier
 
-    return RiskDecision(int(lev), round(margin, 4), round(loss, 4), mode, reasons)
+    return RiskDecision(int(lev), round(margin, 4), round(loss, 4), mode, reasons + [f"lane_{strategy_lane}"])

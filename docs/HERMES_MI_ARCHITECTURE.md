@@ -1,8 +1,8 @@
-# Hermes Mi v1.1.0 Maincoin Strategy Architecture
+# Hermes Mi v1.2.0 Maincoin Strategy Architecture
 
 ## Purpose
 
-Hermes Mi is a dedicated OKX maincoin perpetual strategy isolated from BTC-AHR999 and Jarvis v4 altcoin trading. v1.1.0 upgrades the first complete guarded loop from one conservative slot to dynamic two-slot maincoin compounding for BTC/ETH/SOL/BNB only.
+Hermes Mi is a dedicated OKX maincoin perpetual strategy isolated from BTC-AHR999 and Jarvis v4 altcoin trading. v1.2.0 upgrades the maincoin engine from a single conservative breakout lane to a three-lane, percent-profit-gated system for BTC/ETH/SOL/BNB only.
 
 ## Account and instrument boundaries
 
@@ -20,7 +20,7 @@ Every private read/write path must verify UID/mainUid before acting. Non-whiteli
 
 ## Live gates
 
-- `strategy_tag = mi_v1_1_0_dynamic_two_slot`
+- `strategy_tag = mi_v1_2_0_three_lane_percent_engine`
 - `active_max_positions = 2`
 - `enable_second_position = True`
 - `enable_rotation = False`
@@ -28,15 +28,27 @@ Every private read/write path must verify UID/mainUid before acting. Non-whiteli
 - `single_position_margin_cap_pct = 0.35`
 - `second_position_margin_cap_pct = 0.30`
 - `allow_mixed_direction_portfolio = False`
+- `altcoin_profit_baseline_pct = 0.012`
+- `maincoin_profit_baseline_multiplier = 1.35`
+- `min_expected_net_profit_pct = 0.0162`
 - margin mode: cross
 - hot path: deterministic Python only, no LLM order decisioning
 
-v1.1.0 intentionally moves from low-margin/high-leverage to higher-margin/moderate-leverage exposure. The goal is a higher compounding slope without carrying the tail risk of 60% margin at 20x.
+The profit baseline is dynamic percentage-based, not fixed USDT. Candidate expected net profit must scale with current equity and exceed the altcoin equity-share baseline by multiplier because the maincoin equity-curve slope target is higher.
+
+## Signal lanes
+
+- `trend_confirmed`: 1H trend confirmation plus 15m breakout/reclaim path. This preserves the original conservative maincoin logic.
+- `trend_probe`: early trend pullback/reclaim or reject path, intended to reduce no-MFE late entries by entering earlier with lane-specific risk.
+- `range_swing`: chop/range edge trades when maincoins are bounded and BTC bias is not strongly against the trade.
+
+The live cycle evaluates ranked candidates and now continues to later candidates if the top candidate fails portfolio or percent-profit gates.
 
 ## Risk ladder
 
 - paused: 0x, 0% margin, no new entries
-- probe: 3x-5x, 5%-8% margin, 0.4%-0.8% max loss
+- range_swing: about 6x, 16% margin, about 1.2% max loss before volatility/resonance multipliers
+- trend_probe: about 8x, 14% margin, about 1.4% max loss before volatility/resonance multipliers
 - reduced: 5x-8x, 12%-18% margin, 1.0%-1.8% max loss
 - normal: about 10x, 25% margin, about 3% max loss
 - strong: up to 12x, 32%-35% margin, about 3.5%-4.0% max loss
@@ -63,13 +75,15 @@ High volatility (`ATR / price > 3.5%`) caps leverage to 8x and scales margin/los
    - aligned long/short
    - BTC/alt divergence
    - mixed state
-9. Score layered signals with observe/setup/trigger reason codes.
+9. Score three-lane signals with lane-specific reason codes.
 10. Apply market-state direction gate.
-11. Apply portfolio gate: max two positions, no duplicate symbol, no mixed long/short by default.
-12. Compute dynamic risk decision.
-13. Compute size and enforce portfolio margin guard inside `execute_entry`.
-14. Submit market entry and standalone reduce-only stop only if all gates pass.
-15. Save local snapshot and decision ledger.
+11. Sort candidates by score and evaluate them in order.
+12. Apply portfolio gate: max two positions, no duplicate symbol, no mixed long/short by default.
+13. Compute lane-aware dynamic risk decision.
+14. Preview expected full-trade net profit as a percentage of equity and require it to exceed the dynamic maincoin baseline.
+15. Compute size and enforce portfolio margin guard inside `execute_entry`.
+16. Submit market entry and standalone reduce-only stop only if all gates pass.
+17. Save local snapshot and decision ledger.
 
 ## Guardian and exits
 
@@ -88,7 +102,7 @@ The entry path still places an exchange-side standalone hard stop. Breakeven/tra
 ## Fill sync and reports
 
 - `scripts/mi/mi_sync_fills.py`: syncs OKX fills every 10m to local ledgers.
-- `scripts/mi/mi_daily_review.py`: emits a concise daily maincoin brief with v1.1.0 status, max positions, portfolio margin estimate, and blocked decision count.
+- `scripts/mi/mi_daily_review.py`: emits a concise daily maincoin brief with v1.2.0 status, max positions, portfolio margin estimate, and blocked decision count.
 - Runtime data lives under `/root/jarvis-mi/data/` and `/root/jarvis-mi/reports/` and must never be committed.
 
 ## Cron jobs
@@ -113,12 +127,12 @@ python3 scripts/mi/mi_sync_fills.py
 python3 scripts/mi/mi_daily_review.py
 ```
 
-`mi_live_cycle.py` can place a live order if a strict signal passes. Pause the live-cycle cron before manual testing if no new entries are desired.
+`mi_live_cycle.py` can place a live order if a strict lane signal passes. Pause the live-cycle cron before manual testing if no new entries are desired.
 
 ## GitHub release
 
 - Private repo: `Immutable1407/Jarvis-maincoin-private`
 - Remote: `git@github.com-jarvis:Immutable1407/Jarvis-maincoin-private.git`
-- Release tag: `v1.1.0`
+- Release tag: `v1.2.0`
 
 Before pushing, scan staged files for secrets and confirm no `/data/`, `/reports/`, `.env*`, `.jsonl`, account snapshots, fills, or ledgers are committed.
