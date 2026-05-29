@@ -9,8 +9,9 @@
 - Runtime data under `data/` and reports under `reports/` are not committed.
 - LLMs do not enter the hot path. Strategy loops are pure Python.
 
-## v1.2.0 live gates
+## v1.2.1 live gates
 
+- Patch over v1.2.0: daily report/version metadata consistency; no trading hot-path change.
 - Strategy tag: `mi_v1_2_0_three_lane_percent_engine`.
 - Three signal lanes are active: `trend_confirmed`, `trend_probe`, and `range_swing`.
 - Profit filter is percentage-based, not fixed-USDT: maincoin expected net profit must exceed the altcoin dynamic equity-share baseline by multiplier (`altcoin_profit_baseline_pct * maincoin_profit_baseline_multiplier`).
@@ -26,6 +27,7 @@
 ## Docs pointer
 
 - `docs/HERMES_MI_ARCHITECTURE.md` — current v1.2.0 architecture, data flow, gates, cron jobs.
+- `docs/V1_2_1_RELEASE.md` — v1.2.1 report consistency patch notes.
 - `docs/V1_2_0_RELEASE.md` — v1.2.0 three-lane percent-engine release notes.
 - `docs/RUNBOOK.md` — operations, pause/resume, verification, GitHub sync.
 - `docs/HERMES_MI_V0_1_INFRA_PLAN.md` — historical v0.1 bootstrap reference only.

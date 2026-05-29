@@ -38,11 +38,14 @@ def daily_brief() -> str:
     margin_used = portfolio_margin_used(positions) if positions else 0.0
     margin_pct = (margin_used / float(equity)) if equity else 0.0
     blocked = [d for d in decisions[-100:] if d.get("reason") in {"portfolio_gate", "risk_engine_paused", "active_max_positions_reached"}]
+    lane_state = "三车道百分比收益基线 + 两仓动态复利"
     text = [
         f"# Hermes Mi 主流币策略简报 {day}",
         "",
-        f"- 状态：v1.1.0 dynamic two-slot compounding 运行中。",
+        f"- 状态：{cfg.system_version} {lane_state} 运行中。",
         f"- strategy_tag: {cfg.strategy_tag}",
+        f"- 信号车道: trend_confirmed / trend_probe / range_swing",
+        f"- 最低净收益门槛: {cfg.min_expected_net_profit_pct:.2%} equity",
         f"- 最大仓位: {cfg.active_max_positions}",
         f"- 第二仓: {'enabled' if cfg.enable_second_position else 'disabled'}",
         f"- 组合保证金硬上限: {cfg.portfolio_margin_cap_pct:.0%}",
@@ -55,7 +58,7 @@ def daily_brief() -> str:
     text += [
         f"- 近100条被阻断/暂停决策: {len(blocked)} 条",
         "",
-        "简要结论：v1.1.0 已切换为两仓动态复利模式；重点观察第二仓质量、组合保证金占用、guardian 动作和 market_state 是否长期 pause/chop。",
+        "简要结论：v1.2.x 已切换为三车道百分比收益基线；重点观察 trend_probe/range_swing 是否真实贡献净收益、第二仓质量、组合保证金占用、guardian 动作和 market_state 是否长期 pause/chop。",
     ]
     out = "\n".join(text) + "\n"
     p = REPORT_DIR / "daily" / f"{day}.md"
