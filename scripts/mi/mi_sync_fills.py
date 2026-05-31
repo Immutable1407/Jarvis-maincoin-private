@@ -1,4 +1,7 @@
 from __future__ import annotations
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 import json
 from jarvis_mi.account_guard import assert_mi_account
 from jarvis_mi.config_mi import MiConfig, ensure_dirs

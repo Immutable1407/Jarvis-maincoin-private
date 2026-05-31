@@ -6,7 +6,7 @@ from jarvis_mi.performance import daily_brief
 
 
 class PerformanceReportTests(unittest.TestCase):
-    def test_daily_brief_uses_current_v1_2_version_text(self):
+    def test_daily_brief_uses_current_v1_3_version_text(self):
         env = {
             "HERMES_MI_OKX_API_KEY": "x",
             "HERMES_MI_OKX_SECRET_KEY": "x",
@@ -17,9 +17,10 @@ class PerformanceReportTests(unittest.TestCase):
         }
         with mock.patch.dict(os.environ, env, clear=False):
             text = daily_brief()
-        self.assertIn("v1.2.1-report-consistency", text)
+        self.assertIn("v1.3.0-adaptive-lane-profit-engine", text)
         self.assertIn("trend_confirmed / trend_probe / range_swing", text)
         self.assertIn("最低净收益门槛", text)
+        self.assertIn("v1.3车道门槛", text)
         self.assertNotIn("v1.1.0 dynamic two-slot", text)
 
 

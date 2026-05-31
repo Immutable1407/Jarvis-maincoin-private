@@ -38,7 +38,11 @@ def daily_brief() -> str:
     margin_used = portfolio_margin_used(positions) if positions else 0.0
     margin_pct = (margin_used / float(equity)) if equity else 0.0
     blocked = [d for d in decisions[-100:] if d.get("reason") in {"portfolio_gate", "risk_engine_paused", "active_max_positions_reached"}]
-    lane_state = "三车道百分比收益基线 + 两仓动态复利"
+    lane_thresholds = getattr(cfg, "lane_min_expected_net_profit_pct", None) or {}
+    lane_threshold_text = " / ".join(
+        f"{lane}:{pct:.2%}" for lane, pct in lane_thresholds.items()
+    ) or f"default:{cfg.min_expected_net_profit_pct:.2%}"
+    lane_state = "三车道自适应收益门槛 + 两仓动态复利"
     text = [
         f"# Hermes Mi 主流币策略简报 {day}",
         "",
@@ -46,6 +50,7 @@ def daily_brief() -> str:
         f"- strategy_tag: {cfg.strategy_tag}",
         f"- 信号车道: trend_confirmed / trend_probe / range_swing",
         f"- 最低净收益门槛: {cfg.min_expected_net_profit_pct:.2%} equity",
+        f"- v1.3车道门槛: {lane_threshold_text}; near-miss≥{cfg.near_miss_profit_gate_ratio:.0%}且TP1费后为正",
         f"- 最大仓位: {cfg.active_max_positions}",
         f"- 第二仓: {'enabled' if cfg.enable_second_position else 'disabled'}",
         f"- 组合保证金硬上限: {cfg.portfolio_margin_cap_pct:.0%}",
@@ -58,7 +63,7 @@ def daily_brief() -> str:
     text += [
         f"- 近100条被阻断/暂停决策: {len(blocked)} 条",
         "",
-        "简要结论：v1.2.x 已切换为三车道百分比收益基线；重点观察 trend_probe/range_swing 是否真实贡献净收益、第二仓质量、组合保证金占用、guardian 动作和 market_state 是否长期 pause/chop。",
+        "简要结论：v1.3.0 已切换为车道自适应收益门槛；重点观察 near-miss 放行样本、trend_probe/range_swing 是否真实贡献净收益、第二仓质量、组合保证金占用、guardian 动作和 market_state 是否长期 pause/chop。",
     ]
     out = "\n".join(text) + "\n"
     p = REPORT_DIR / "daily" / f"{day}.md"

@@ -1,4 +1,7 @@
 from __future__ import annotations
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 import json
 from jarvis_mi.account_guard import assert_mi_account
 from jarvis_mi.config_mi import MiConfig, ensure_dirs
@@ -13,6 +16,55 @@ from jarvis_mi.portfolio import portfolio_allows_entry
 from jarvis_mi.snapshot import save_snapshot
 from jarvis_mi.indicators import atr
 from jarvis_mi.sizing import compute_size
+
+
+def lane_profit_gate(selected, risk_decision, preview_size, equity, cfg, resonance_adjustment: float = 0.0) -> tuple[bool, dict]:
+    """v1.3 lane-aware expected-profit gate.
+
+    Full-trade expected net must normally clear the lane threshold. A controlled
+    near-miss path is allowed only for high-score candidates with fee-positive
+    TP1 economics, preserving v1.2's cost discipline while allowing more live
+    samples in a 50U account where contract granularity causes threshold cliffs.
+    """
+    stop_pct = abs(selected.entry_ref - selected.stop) / selected.entry_ref if selected.entry_ref else 0.0
+    expected_trade_gross = preview_size.notional * stop_pct * float(selected.expected_r or 0.0)
+    expected_roundtrip_fee = preview_size.notional * float(cfg.taker_fee_rate) * 2.0
+    expected_trade_net = expected_trade_gross - expected_roundtrip_fee
+    expected_trade_net_pct = expected_trade_net / equity if equity else 0.0
+    tp1_r = float(getattr(selected, "tp1_r", 1.2) or 1.2)
+    tp1_fraction = float(getattr(selected, "tp1_fraction", 0.5) or 0.5)
+    expected_tp1_net = preview_size.notional * stop_pct * tp1_r * tp1_fraction - preview_size.notional * float(cfg.taker_fee_rate) * (1.0 + tp1_fraction)
+    expected_tp1_net_pct = expected_tp1_net / equity if equity else 0.0
+    lane = getattr(selected, "strategy_lane", "trend_confirmed") or "trend_confirmed"
+    lane_thresholds = getattr(cfg, "lane_min_expected_net_profit_pct", None) or {}
+    base_threshold = max(float(cfg.min_expected_net_profit_pct), float(cfg.altcoin_profit_baseline_pct) * float(cfg.maincoin_profit_baseline_multiplier))
+    min_net_pct = float(lane_thresholds.get(lane, base_threshold))
+    passed = expected_trade_net_pct >= min_net_pct
+    near_miss_floor = min_net_pct * float(getattr(cfg, "near_miss_profit_gate_ratio", 0.92))
+    near_miss = (
+        not passed
+        and expected_trade_net_pct >= near_miss_floor
+        and expected_tp1_net_pct >= float(getattr(cfg, "min_tp1_net_profit_pct", 0.0015))
+        and float(getattr(selected, "score", 0.0) or 0.0) >= float(getattr(cfg, "near_miss_min_score", 66.0))
+        and float(resonance_adjustment or 0.0) >= float(getattr(cfg, "near_miss_min_resonance_adjustment", 0.0))
+        and getattr(risk_decision, "risk_mode", "") != "paused"
+    )
+    if near_miss:
+        passed = True
+    preview = {
+        "expected_trade_net": round(expected_trade_net, 4),
+        "expected_trade_net_pct": round(expected_trade_net_pct, 5),
+        "expected_tp1_net": round(expected_tp1_net, 4),
+        "expected_tp1_net_pct": round(expected_tp1_net_pct, 5),
+        "min_net_pct": round(min_net_pct, 5),
+        "base_min_net_pct": round(base_threshold, 5),
+        "near_miss_floor_pct": round(near_miss_floor, 5),
+        "lane": lane,
+        "near_miss_pass": near_miss,
+        "gate_version": "v1.3.0",
+        "sizing": preview_size.__dict__,
+    }
+    return passed, preview
 
 
 def run_live_cycle() -> dict:
@@ -81,7 +133,7 @@ def run_live_cycle() -> dict:
     candidates = [s for s in signals if s.side]
     candidates.sort(key=lambda s: s.score, reverse=True)
     if not candidates:
-        rec = {"event": "NO_TRADE", "reason": "no_v1_1_candidate", "signals": [s.__dict__ for s in signals], **base_snapshot}
+        rec = {"event": "NO_TRADE", "reason": "no_candidate", "signals": [s.__dict__ for s in signals], **base_snapshot}
         rec["snapshot"] = save_snapshot({**base_snapshot, "signals": [s.__dict__ for s in signals], "decision": rec})
         append_jsonl("decisions.jsonl", rec)
         return rec
@@ -122,19 +174,12 @@ def run_live_cycle() -> dict:
             margin_pct=float(risk_decision.margin_pct),
             max_loss_pct=float(risk_decision.max_loss_pct),
         )
-        stop_pct = abs(selected.entry_ref - selected.stop) / selected.entry_ref if selected.entry_ref else 0.0
-        expected_trade_gross = preview_size.notional * stop_pct * float(selected.expected_r or 0.0)
-        expected_roundtrip_fee = preview_size.notional * float(cfg.taker_fee_rate) * 2.0
-        expected_trade_net = expected_trade_gross - expected_roundtrip_fee
-        expected_trade_net_pct = expected_trade_net / equity if equity else 0.0
-        tp1_r = float(getattr(selected, "tp1_r", 1.2) or 1.2)
-        tp1_fraction = float(getattr(selected, "tp1_fraction", 0.5) or 0.5)
-        expected_tp1_net = preview_size.notional * stop_pct * tp1_r * tp1_fraction - preview_size.notional * float(cfg.taker_fee_rate) * (1.0 + tp1_fraction)
-        expected_tp1_net_pct = expected_tp1_net / equity if equity else 0.0
-        min_net_pct = max(float(cfg.min_expected_net_profit_pct), float(cfg.altcoin_profit_baseline_pct) * float(cfg.maincoin_profit_baseline_multiplier))
-        profit_preview = {"expected_trade_net": round(expected_trade_net, 4), "expected_trade_net_pct": round(expected_trade_net_pct, 5), "expected_tp1_net": round(expected_tp1_net, 4), "expected_tp1_net_pct": round(expected_tp1_net_pct, 5), "min_net_pct": round(min_net_pct, 5), "lane": getattr(selected, "strategy_lane", "unknown"), "sizing": preview_size.__dict__}
-        if expected_trade_net_pct < min_net_pct:
-            rejected_candidates.append({"reason": "percent_profit_baseline_not_met", "selected": selected.__dict__, "risk_decision": risk_decision.to_dict(), "profit_preview": profit_preview})
+        profit_gate_ok, profit_preview = lane_profit_gate(
+            selected, risk_decision, preview_size, equity, cfg,
+            resonance_adjustment=float(getattr(resonance, "score_adjustment", 0.0) or 0.0),
+        )
+        if not profit_gate_ok:
+            rejected_candidates.append({"reason": "lane_profit_gate_not_met", "selected": selected.__dict__, "risk_decision": risk_decision.to_dict(), "profit_preview": profit_preview})
             continue
 
         trade = execute_entry(client, cfg, instruments[selected.inst_id], selected, equity, risk_decision=risk_decision, positions=positions)

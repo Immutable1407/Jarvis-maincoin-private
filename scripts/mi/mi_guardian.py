@@ -1,4 +1,7 @@
 from __future__ import annotations
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 import json
 from jarvis_mi.account_guard import assert_mi_account, assert_allowed_inst
 from jarvis_mi.config_mi import MiConfig, ensure_dirs
@@ -70,8 +73,13 @@ def run_guardian() -> dict:
                         events.append(reduce_only_fraction(client, cfg, p, action.fraction, action.reason, lot_sz=lot_sz, min_sz=str(min_sz)))
                         state["partial_tp_2"] = True
                     elif action.kind == "trailing_stop" and cfg.enable_trailing:
-                        state["trailing_px"] = action.trigger_price
-                        events.append({"event": "EXIT_STATE", "kind": action.kind, "instId": inst_id, "reason": action.reason, "trigger_price": action.trigger_price})
+                        existing = state.get("trailing_px")
+                        proposed = float(action.trigger_price)
+                        if existing is not None:
+                            existing_f = float(existing)
+                            proposed = max(existing_f, proposed) if direction == "long" else min(existing_f, proposed)
+                        state["trailing_px"] = proposed
+                        events.append({"event": "EXIT_STATE", "kind": action.kind, "instId": inst_id, "reason": action.reason, "trigger_price": proposed, "raw_trigger_price": action.trigger_price, "monotonic": True})
                 except Exception as action_error:
                     events.append({"event": "EXIT_ACTION_ERROR", "kind": action.kind, "instId": inst_id, "error": str(action_error)})
             # Enforce local breakeven/trailing close via guardian instead of modifying OKX algos blindly.

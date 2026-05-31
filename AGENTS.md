@@ -9,7 +9,16 @@
 - Runtime data under `data/` and reports under `reports/` are not committed.
 - LLMs do not enter the hot path. Strategy loops are pure Python.
 
-## v1.2.1 live gates
+## v1.3.0 live gates
+
+- Minor release over v1.2.x: adaptive lane profit engine, fill-sync dedupe, and monotonic guardian trailing.
+- Strategy tag: `mi_v1_3_0_adaptive_lane_profit_engine`.
+- Lane-specific expected-net thresholds: trend_confirmed 1.50%, trend_probe 1.45%, range_swing 1.38% of equity.
+- Controlled near-miss pass requires ≥92% of lane threshold, fee-positive TP1 preview, candidate score ≥66, and non-paused risk engine.
+- Fill sync dedupes by `tradeId`/`billId`/composite key into `data/mi/state/fill_sync_seen.json`.
+- Guardian trailing stop state is monotonic: long trails never loosen downward; short trails never loosen upward.
+
+## v1.2.1 live gates (previous baseline)
 
 - Patch over v1.2.0: daily report/version metadata consistency; no trading hot-path change.
 - Strategy tag: `mi_v1_2_0_three_lane_percent_engine`.
@@ -26,7 +35,7 @@
 
 ## Docs pointer
 
-- `docs/HERMES_MI_ARCHITECTURE.md` — current v1.2.0 architecture, data flow, gates, cron jobs.
+- `docs/HERMES_MI_ARCHITECTURE.md` — current v1.3.0 architecture, data flow, gates, cron jobs.
 - `docs/V1_2_1_RELEASE.md` — v1.2.1 report consistency patch notes.
 - `docs/V1_2_0_RELEASE.md` — v1.2.0 three-lane percent-engine release notes.
 - `docs/RUNBOOK.md` — operations, pause/resume, verification, GitHub sync.
@@ -41,14 +50,14 @@ python3 -m compileall -q jarvis_mi scripts/mi tests/mi
 python3 -m unittest discover -s tests/mi -v
 python3 scripts/mi/mi_healthcheck.py
 python3 scripts/mi/mi_guardian.py
-python3 scripts/mi/mi_live_cycle.py  # can place a live order if v1.2.0 signal and portfolio/profit gates pass
+python3 scripts/mi/mi_live_cycle.py  # can place a live order if v1.3.0 signal and portfolio/profit gates pass
 python3 scripts/mi/mi_sync_fills.py
 python3 scripts/mi/mi_daily_review.py
 ```
 
 ## Cron jobs
 
-- `bc97ef299d9f` — Hermes Mi v1.2.0 maincoin live cycle, every 15m, local, `jarvis_mi_live_cycle.sh`.
+- `bc97ef299d9f` — Hermes Mi v1.3.0 maincoin live cycle, every 15m, local, `jarvis_mi_live_cycle.sh`.
 - `dcb5a389e2d4` — Hermes Mi guardian, every 5m, local, `jarvis_mi_guardian.sh`.
 - `4d7fbee50ff9` — Hermes Mi healthcheck, every 120m, local, `jarvis_mi_healthcheck.sh`.
 - `aded3c6554f3` — Hermes Mi fill sync, every 10m, local, `jarvis_mi_sync_fills.sh`.

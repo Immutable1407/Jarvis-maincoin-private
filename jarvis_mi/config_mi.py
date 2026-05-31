@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 PROJECT_ROOT = Path("/root/jarvis-mi")
@@ -45,13 +45,26 @@ class MiConfig:
     max_loss_pct: float = 0.03
     min_expected_r: float = 1.5
     max_daily_realized_loss_pct: float = 0.10
-    system_version: str = "v1.2.1-report-consistency"
-    strategy_tag: str = "mi_v1_2_0_three_lane_percent_engine"
+    system_version: str = "v1.3.0-adaptive-lane-profit-engine"
+    strategy_tag: str = "mi_v1_3_0_adaptive_lane_profit_engine"
     # v1.2.0: percent-based profit baseline. Maincoin target slope should exceed
     # altcoin's dynamic per-trade equity share, not use a fixed USDT target.
     altcoin_profit_baseline_pct: float = 0.012
     maincoin_profit_baseline_multiplier: float = 1.35
     min_expected_net_profit_pct: float = 0.0162
+    # v1.3.0: lane-aware adaptive gate. Full-trade net remains primary, but
+    # high-quality near-miss candidates may pass when TP1 is fee-positive and
+    # the portfolio is underused. This prevents the v1.2 static gate from
+    # rejecting every viable trend_probe/range_swing sample by a few bps.
+    lane_min_expected_net_profit_pct: dict = field(default_factory=lambda: {
+        "trend_confirmed": 0.0150,
+        "trend_probe": 0.0145,
+        "range_swing": 0.0138,
+    })
+    near_miss_profit_gate_ratio: float = 0.92
+    min_tp1_net_profit_pct: float = 0.0015
+    near_miss_min_score: float = 66.0
+    near_miss_min_resonance_adjustment: float = 0.0
     taker_fee_rate: float = 0.0005
     enable_three_lane_signals: bool = True
     # v1.1.0+ feature flags: two-slot maincoin compounding with portfolio hard caps.
