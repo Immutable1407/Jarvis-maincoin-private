@@ -11,7 +11,7 @@
 
 ## v1.4.1 live gates
 
-- Patch over v1.4.0: entry/report fail-loud hotfix; v1.4.0 kept  lane attribution, feedback-based near-miss cooldown, correlated same-direction governor, Guardian exit cooldowns, and richer daily brief.
+- Patch over v1.4.0: entry/report fail-loud hotfix; v1.4.0 kept lane attribution, feedback-based near-miss cooldown, correlated same-direction governor, Guardian exit cooldowns, and richer daily brief.
 - Strategy tag: `mi_v1_4_1_entry_report_fail_loud_hotfix`.
 - Lane-specific expected-net thresholds remain: trend_confirmed 1.50%, trend_probe 1.45%, range_swing 1.38% of equity.
 - Controlled near-miss pass requires ≥92% of lane threshold, fee-positive TP1 preview, candidate score ≥66, non-paused risk engine, and no lane/guardian feedback cooldown.

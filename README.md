@@ -4,7 +4,7 @@ Private repository for the Hermes Mi maincoin perpetual strategy.
 
 ## Current version
 
-`v1.4.1-lane-attribution-correlated-short-governor` is deployed on the VPS at `/root/jarvis-mi`.
+`v1.4.1-entry-report-fail-loud-hotfix` is deployed on the VPS at `/root/jarvis-mi`.
 
 ## Scope
 
@@ -38,7 +38,8 @@ Private repository for the Hermes Mi maincoin perpetual strategy.
 ## Docs
 
 - `docs/HERMES_MI_ARCHITECTURE.md` — current v1.4.1 architecture and live gates.
-- `docs/V1_4_0_RELEASE.md` — v1.4.1 lane attribution + correlated same-direction governor release notes.
+- `docs/V1_4_1_RELEASE.md` — v1.4.1 entry/report fail-loud hotfix notes.
+- `docs/V1_4_0_RELEASE.md` — v1.4.0 lane attribution + correlated same-direction governor release notes.
 - `docs/V1_3_0_RELEASE.md` — v1.3.0 adaptive lane profit engine release notes.
 - `docs/V1_2_1_RELEASE.md` — v1.2.1 report consistency patch notes.
 - `docs/V1_2_0_RELEASE.md` — v1.2.0 three-lane percent-engine release notes.
