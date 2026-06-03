@@ -26,11 +26,14 @@ hermes cron list --all
 
 Relevant jobs:
 
-- `bc97ef299d9f` — v1.2.0 live cycle, every 15m, local.
+- `bc97ef299d9f` — v1.4.0 live cycle, every 15m, local.
 - `dcb5a389e2d4` — guardian, every 5m, local.
 - `4d7fbee50ff9` — healthcheck, every 120m, local.
 - `aded3c6554f3` — fill sync, every 10m, local.
 - `65b8d9feb0b3` — daily maincoin brief, 21:00 UTC+8, Feishu.
+- `f65da2f01c13` — combined maincoin+altcoin weekly summary, Sunday 22:00 UTC+8, Feishu; lives in Hermes cron and covers both Jarvis v4 and Hermes Mi.
+
+Feishu should normally receive only BTC-AHR999 DCA, Jarvis v4 daily recap, Hermes Mi daily brief, and the Sunday combined weekly summary. Maincoin execution/guardian/health/fill-sync outputs stay `local`.
 
 ## Pause Hermes Mi trading
 
@@ -73,7 +76,7 @@ python3 scripts/mi/mi_sync_fills.py
 python3 scripts/mi/mi_daily_review.py
 ```
 
-`python3 scripts/mi/mi_live_cycle.py` can place a live order if a strict v1.2.0 lane signal passes portfolio and dynamic percent-profit gates. Pause `bc97ef299d9f` before manual live-cycle testing if no new entries are desired.
+`python3 scripts/mi/mi_live_cycle.py` can place a live order if a strict v1.4.0 lane signal passes portfolio, guardian-cooldown, dynamic percent-profit, feedback near-miss, and correlated same-direction governor gates. Do not use it for read-only verification.
 
 ## Logs, ledgers, and reports
 
@@ -107,7 +110,7 @@ git status --short
 git add AGENTS.md README.md docs jarvis_mi scripts tests .gitignore
 git diff --cached --name-only
 # confirm no /data, /reports, .env*, .jsonl, account snapshots, fills, or ledgers are staged
-git commit -m 'feat(mi): release v1.2.0 three-lane percent engine'
+git commit -m 'feat(mi): release v1.4.0 lane attribution governors'
 git push
 ```
 

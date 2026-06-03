@@ -10,6 +10,7 @@ from jarvis_mi.indicators import atr
 from jarvis_mi.ledger import append_jsonl
 from jarvis_mi.okx_mi_client import OKXMiClient
 from jarvis_mi.exits import plan_exit_actions
+from jarvis_mi.governors import record_guardian_exit_cooldown
 from jarvis_mi.state import load_json, save_json
 
 
@@ -50,6 +51,7 @@ def run_guardian() -> dict:
                 reason = f"guardian_local_stop_short mark={mark} stop={local_stop}"
         if reason:
             events.append(reduce_only_close(client, cfg, p, reason))
+            events.append({"event": "GUARDIAN_COOLDOWN", **record_guardian_exit_cooldown(inst_id, direction, reason)})
             continue
 
         state_name = f"exit_state_{inst_id}_{direction}_{avg_px:.8f}.json"
@@ -87,14 +89,22 @@ def run_guardian() -> dict:
             trail = state.get("trailing_px")
             if direction == "long":
                 if be and mark <= float(be):
-                    events.append(reduce_only_close(client, cfg, p, f"guardian_breakeven_stop mark={mark} be={be}"))
+                    close_reason = f"guardian_breakeven_stop mark={mark} be={be}"
+                    events.append(reduce_only_close(client, cfg, p, close_reason))
+                    events.append({"event": "GUARDIAN_COOLDOWN", **record_guardian_exit_cooldown(inst_id, direction, close_reason)})
                 elif trail and mark <= float(trail):
-                    events.append(reduce_only_close(client, cfg, p, f"guardian_trailing_stop mark={mark} trail={trail}"))
+                    close_reason = f"guardian_trailing_stop mark={mark} trail={trail}"
+                    events.append(reduce_only_close(client, cfg, p, close_reason))
+                    events.append({"event": "GUARDIAN_COOLDOWN", **record_guardian_exit_cooldown(inst_id, direction, close_reason)})
             else:
                 if be and mark >= float(be):
-                    events.append(reduce_only_close(client, cfg, p, f"guardian_breakeven_stop mark={mark} be={be}"))
+                    close_reason = f"guardian_breakeven_stop mark={mark} be={be}"
+                    events.append(reduce_only_close(client, cfg, p, close_reason))
+                    events.append({"event": "GUARDIAN_COOLDOWN", **record_guardian_exit_cooldown(inst_id, direction, close_reason)})
                 elif trail and mark >= float(trail):
-                    events.append(reduce_only_close(client, cfg, p, f"guardian_trailing_stop mark={mark} trail={trail}"))
+                    close_reason = f"guardian_trailing_stop mark={mark} trail={trail}"
+                    events.append(reduce_only_close(client, cfg, p, close_reason))
+                    events.append({"event": "GUARDIAN_COOLDOWN", **record_guardian_exit_cooldown(inst_id, direction, close_reason)})
             save_json(state_name, state)
     rec = {"event": "GUARDIAN", "account": acct, "positions": len(positions), "actions": events}
     append_jsonl("guardian.jsonl", rec)

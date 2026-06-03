@@ -1,8 +1,8 @@
-# Hermes Mi v1.2.0 Maincoin Strategy Architecture
+# Hermes Mi v1.4.0 Maincoin Strategy Architecture
 
 ## Purpose
 
-Hermes Mi is a dedicated OKX maincoin perpetual strategy isolated from BTC-AHR999 and Jarvis v4 altcoin trading. v1.2.0 upgrades the maincoin engine from a single conservative breakout lane to a three-lane, percent-profit-gated system for BTC/ETH/SOL/BNB only.
+Hermes Mi is a dedicated OKX maincoin perpetual strategy isolated from BTC-AHR999 and Jarvis v4 altcoin trading. v1.4.0 keeps the v1.3 adaptive three-lane BTC/ETH/SOL/BNB engine and adds lane attribution, feedback-based near-miss cooldowns, correlated same-direction exposure governance, Guardian exit cooldowns, fill-sync dedupe, and monotonic guardian trailing.
 
 ## Account and instrument boundaries
 
@@ -20,7 +20,7 @@ Every private read/write path must verify UID/mainUid before acting. Non-whiteli
 
 ## Live gates
 
-- `strategy_tag = mi_v1_2_0_three_lane_percent_engine`
+- `strategy_tag = mi_v1_4_0_lane_attribution_correlated_short_governor`
 - `active_max_positions = 2`
 - `enable_second_position = True`
 - `enable_rotation = False`
@@ -28,13 +28,13 @@ Every private read/write path must verify UID/mainUid before acting. Non-whiteli
 - `single_position_margin_cap_pct = 0.35`
 - `second_position_margin_cap_pct = 0.30`
 - `allow_mixed_direction_portfolio = False`
-- `altcoin_profit_baseline_pct = 0.012`
-- `maincoin_profit_baseline_multiplier = 1.35`
-- `min_expected_net_profit_pct = 0.0162`
+- lane expected-net thresholds: trend_confirmed 1.50%, trend_probe 1.45%, range_swing 1.38% of equity
+- controlled near-miss pass: requires at least 92% of lane threshold, fee-positive TP1 preview, candidate score >= 66, a non-paused risk engine, and no lane/guardian feedback cooldown
+- same-direction second-position governor: low-quality additions are blocked unless score >= 84 or lane is `trend_confirmed`
 - margin mode: cross
 - hot path: deterministic Python only, no LLM order decisioning
 
-The profit baseline is dynamic percentage-based, not fixed USDT. Candidate expected net profit must scale with current equity and exceed the altcoin equity-share baseline by multiplier because the maincoin equity-curve slope target is higher.
+The profit baseline is dynamic percentage-based, not fixed USDT. Candidate expected net profit must scale with current equity and pass the lane-specific threshold; near-miss entries are tightly gated rather than unconditional.
 
 ## Signal lanes
 
@@ -80,10 +80,11 @@ High volatility (`ATR / price > 3.5%`) caps leverage to 8x and scales margin/los
 11. Sort candidates by score and evaluate them in order.
 12. Apply portfolio gate: max two positions, no duplicate symbol, no mixed long/short by default.
 13. Compute lane-aware dynamic risk decision.
-14. Preview expected full-trade net profit as a percentage of equity and require it to exceed the dynamic maincoin baseline.
-15. Compute size and enforce portfolio margin guard inside `execute_entry`.
-16. Submit market entry and standalone reduce-only stop only if all gates pass.
-17. Save local snapshot and decision ledger.
+14. Preview expected full-trade net profit as a percentage of equity and require it to exceed the lane-aware threshold, or pass the controlled near-miss gate.
+15. Apply same-instrument/side Guardian-exit cooldowns and correlated same-direction governor.
+16. Compute size and enforce portfolio margin guard inside `execute_entry`.
+17. Submit market entry and standalone reduce-only stop only if all gates pass.
+18. Save local snapshot and decision ledger.
 
 ## Guardian and exits
 
@@ -101,8 +102,8 @@ The entry path still places an exchange-side standalone hard stop. Breakeven/tra
 
 ## Fill sync and reports
 
-- `scripts/mi/mi_sync_fills.py`: syncs OKX fills every 10m to local ledgers.
-- `scripts/mi/mi_daily_review.py`: emits a concise daily maincoin brief with v1.2.0 status, max positions, portfolio margin estimate, and blocked decision count.
+- `scripts/mi/mi_sync_fills.py`: syncs OKX fills every 10m to local ledgers and dedupes fills by stable keys.
+- `scripts/mi/mi_daily_review.py`: emits a concise daily maincoin brief with v1.4.0 status, active lanes, realized net after fees, dedup fill count, lane/near-miss summary, top rejection reason, Guardian exit counts, current positions/UPL, max positions, portfolio margin estimate, and blocked decision count.
 - Runtime data lives under `/root/jarvis-mi/data/` and `/root/jarvis-mi/reports/` and must never be committed.
 
 ## Cron jobs
@@ -112,6 +113,9 @@ The entry path still places an exchange-side standalone hard stop. Breakeven/tra
 - `4d7fbee50ff9` — healthcheck, every 120m, local delivery.
 - `aded3c6554f3` — fill sync, every 10m, local delivery.
 - `65b8d9feb0b3` — daily maincoin brief, 21:00 UTC+8, delivered to Feishu.
+- `f65da2f01c13` — combined maincoin+altcoin weekly summary, Sunday 22:00 UTC+8, delivered to Feishu.
+
+Feishu is summary-only: BTC-AHR999 DCA, Jarvis v4 daily recap, Hermes Mi daily brief, and the combined Sunday weekly summary. Execution/guardian/health/fill-sync jobs stay local.
 
 ## Verification
 
@@ -121,8 +125,7 @@ export PYTHONPATH=/root/jarvis-mi
 python3 -m compileall -q jarvis_mi scripts/mi tests/mi
 python3 -m unittest discover -s tests/mi -v
 python3 scripts/mi/mi_healthcheck.py
-python3 scripts/mi/mi_guardian.py
-python3 scripts/mi/mi_live_cycle.py
+# Do not run mi_live_cycle.py as routine verification; it can place a live order.
 python3 scripts/mi/mi_sync_fills.py
 python3 scripts/mi/mi_daily_review.py
 ```
@@ -133,6 +136,6 @@ python3 scripts/mi/mi_daily_review.py
 
 - Private repo: `Immutable1407/Jarvis-maincoin-private`
 - Remote: `git@github.com-jarvis:Immutable1407/Jarvis-maincoin-private.git`
-- Release tag: `v1.2.0`
+- Release tag: `v1.4.0-lane-attribution-correlated-short-governor`
 
 Before pushing, scan staged files for secrets and confirm no `/data/`, `/reports/`, `.env*`, `.jsonl`, account snapshots, fills, or ledgers are committed.

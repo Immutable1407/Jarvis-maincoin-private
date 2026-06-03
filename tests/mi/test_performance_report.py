@@ -6,7 +6,7 @@ from jarvis_mi.performance import daily_brief
 
 
 class PerformanceReportTests(unittest.TestCase):
-    def test_daily_brief_uses_current_v1_3_version_text(self):
+    def test_daily_brief_uses_current_v1_4_version_text(self):
         env = {
             "HERMES_MI_OKX_API_KEY": "x",
             "HERMES_MI_OKX_SECRET_KEY": "x",
@@ -17,12 +17,25 @@ class PerformanceReportTests(unittest.TestCase):
         }
         with mock.patch.dict(os.environ, env, clear=False):
             text = daily_brief()
-        self.assertIn("v1.3.0-adaptive-lane-profit-engine", text)
+        self.assertIn("v1.4.1-entry-report-fail-loud-hotfix", text)
         self.assertIn("trend_confirmed / trend_probe / range_swing", text)
         self.assertIn("最低净收益门槛", text)
-        self.assertIn("v1.3车道门槛", text)
+        self.assertIn("v1.4车道门槛", text)
+        self.assertIn("Guardian退出计数", text)
         self.assertNotIn("v1.1.0 dynamic two-slot", text)
 
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_realized_net_after_fees_for_day_filters_bjt_day():
+    from jarvis_mi.performance import _realized_net_after_fees_for_day
+    fills = [
+        {'tradeId':'today', 'fillTime':'1779984000000', 'fillPnl':'1', 'fee':'-0.1'},
+        {'tradeId':'other', 'fillTime':'1780070400000', 'fillPnl':'5', 'fee':'-0.5'},
+    ]
+    # 1779984000000 ms is 2026-05-29 08:00:00 BJT.
+    net, n = _realized_net_after_fees_for_day(fills, '2026-05-29')
+    assert n == 1
+    assert round(net, 2) == 0.90

@@ -68,12 +68,24 @@ def execute_entry(client: OKXMiClient, cfg: MiConfig, inst: dict, signal, equity
     if size.stop_loss_usdt > equity * max_loss_pct * 1.02:
         raise RuntimeError("risk cap exceeded after sizing")
     pos_side = pos_side_for(direction)
-    client.set_leverage(signal.inst_id, leverage, pos_side=pos_side)
+    lev_resp = client.set_leverage(signal.inst_id, leverage, pos_side=pos_side)
+    if isinstance(lev_resp, dict) and lev_resp.get("code", "0") != "0":
+        raise RuntimeError(f"set_leverage_failed: {lev_resp.get('msg') or lev_resp}")
     clid = ("MI" + str(int(time.time())) + direction[0] + signal.inst_id.replace("-", ""))[:32]
     order = client.market_order(signal.inst_id, open_side_for(direction), size.sz, pos_side=pos_side, reduce_only=False, cl_ord_id=clid)
+    if isinstance(order, dict) and order.get("code", "0") != "0":
+        raise RuntimeError(f"entry_order_failed: {order.get('msg') or order}")
+    order_data = order.get("data") if isinstance(order, dict) else None
+    order_id = ""
+    if isinstance(order_data, list) and order_data:
+        order_id = str(order_data[0].get("ordId") or "")
+    if not order_id:
+        raise RuntimeError("entry_order_missing_ordid")
     # Place standalone reduce-only stop immediately; guardian also enforces local stop.
     stop_px = format_price(signal.stop, inst["tickSz"])
     stop = client.place_stop_algo(signal.inst_id, close_side_for(direction), size.sz, stop_px, pos_side=pos_side)
+    if isinstance(stop, dict) and stop.get("code", "0") != "0":
+        raise RuntimeError(f"entry_stop_algo_failed_after_order:{order_id}: {stop.get('msg') or stop}")
     rec = {
         "event": "ENTRY_SUBMITTED",
         "instId": signal.inst_id,
@@ -84,6 +96,10 @@ def execute_entry(client: OKXMiClient, cfg: MiConfig, inst: dict, signal, equity
         "stop_px": stop_px,
         "score": signal.score,
         "reason": signal.reason,
+        "strategy_lane": getattr(signal, "strategy_lane", None),
+        "near_miss_pass": getattr(signal, "near_miss_pass", None),
+        "expected_net_pct": getattr(signal, "expected_net_pct", None),
+        "expected_tp1_net_pct": getattr(signal, "expected_tp1_net_pct", None),
         "sizing": size.__dict__,
         "portfolio_reasons": portfolio_reasons,
         "order": order.get("data"),

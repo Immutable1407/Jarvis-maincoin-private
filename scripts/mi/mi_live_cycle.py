@@ -5,6 +5,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 import json
 from jarvis_mi.account_guard import assert_mi_account
 from jarvis_mi.config_mi import MiConfig, ensure_dirs
+from jarvis_mi.governors import (
+    correlate_same_direction_governor,
+    guardian_cooldown_allows_entry,
+    lane_feedback_allows_near_miss,
+)
 from jarvis_mi.ledger import append_jsonl
 from jarvis_mi.okx_mi_client import OKXMiClient
 from jarvis_mi.signal_score import evaluate_inst, btc_bias_from_h1
@@ -18,8 +23,8 @@ from jarvis_mi.indicators import atr
 from jarvis_mi.sizing import compute_size
 
 
-def lane_profit_gate(selected, risk_decision, preview_size, equity, cfg, resonance_adjustment: float = 0.0) -> tuple[bool, dict]:
-    """v1.3 lane-aware expected-profit gate.
+def lane_profit_gate(selected, risk_decision, preview_size, equity, cfg, resonance_adjustment: float = 0.0, now_ts: float | None = None) -> tuple[bool, dict]:
+    """v1.4 lane-aware expected-profit gate with conservative feedback.
 
     Full-trade expected net must normally clear the lane threshold. A controlled
     near-miss path is allowed only for high-score candidates with fee-positive
@@ -41,6 +46,12 @@ def lane_profit_gate(selected, risk_decision, preview_size, equity, cfg, resonan
     min_net_pct = float(lane_thresholds.get(lane, base_threshold))
     passed = expected_trade_net_pct >= min_net_pct
     near_miss_floor = min_net_pct * float(getattr(cfg, "near_miss_profit_gate_ratio", 0.92))
+    feedback_allowed, feedback_reason = lane_feedback_allows_near_miss(
+        lane,
+        getattr(selected, "inst_id", None),
+        getattr(selected, "side", None),
+        now_ts=now_ts,
+    )
     near_miss = (
         not passed
         and expected_trade_net_pct >= near_miss_floor
@@ -48,20 +59,25 @@ def lane_profit_gate(selected, risk_decision, preview_size, equity, cfg, resonan
         and float(getattr(selected, "score", 0.0) or 0.0) >= float(getattr(cfg, "near_miss_min_score", 66.0))
         and float(resonance_adjustment or 0.0) >= float(getattr(cfg, "near_miss_min_resonance_adjustment", 0.0))
         and getattr(risk_decision, "risk_mode", "") != "paused"
+        and feedback_allowed
     )
     if near_miss:
         passed = True
     preview = {
         "expected_trade_net": round(expected_trade_net, 4),
         "expected_trade_net_pct": round(expected_trade_net_pct, 5),
+        "expected_net_pct": round(expected_trade_net_pct, 5),
         "expected_tp1_net": round(expected_tp1_net, 4),
         "expected_tp1_net_pct": round(expected_tp1_net_pct, 5),
         "min_net_pct": round(min_net_pct, 5),
         "base_min_net_pct": round(base_threshold, 5),
         "near_miss_floor_pct": round(near_miss_floor, 5),
         "lane": lane,
+        "strategy_lane": lane,
         "near_miss_pass": near_miss,
-        "gate_version": "v1.3.0",
+        "near_miss_feedback_allowed": feedback_allowed,
+        "near_miss_feedback_reason": feedback_reason,
+        "gate_version": "v1.4.1",
         "sizing": preview_size.__dict__,
     }
     return passed, preview
@@ -151,6 +167,11 @@ def run_live_cycle() -> dict:
             rejected_candidates.append({"reason": "portfolio_gate", "portfolio_reasons": portfolio_reasons, "selected": selected.__dict__})
             continue
 
+        cooldown_ok, cooldown_detail = guardian_cooldown_allows_entry(selected.inst_id, selected.side)
+        if not cooldown_ok:
+            rejected_candidates.append({"reason": "guardian_exit_cooldown", "cooldown": cooldown_detail, "selected": selected.__dict__})
+            continue
+
         m15 = m15_by_inst[selected.inst_id]
         vol_pct = (atr(m15, 14)[-1] / selected.entry_ref) if selected.entry_ref and len(m15) >= 20 else 0.0
         risk_decision = decide_risk(market_state, selected.score, vol_pct, equity, recent_stopouts=0, resonance_risk_multiplier=resonance.risk_multiplier, strategy_lane=getattr(selected, "strategy_lane", "trend_confirmed"))
@@ -182,6 +203,13 @@ def run_live_cycle() -> dict:
             rejected_candidates.append({"reason": "lane_profit_gate_not_met", "selected": selected.__dict__, "risk_decision": risk_decision.to_dict(), "profit_preview": profit_preview})
             continue
 
+        corr_ok, corr_detail = correlate_same_direction_governor(positions, selected, cfg, equity=equity, new_size=preview_size)
+        if not corr_ok:
+            rejected_candidates.append({"reason": "correlated_same_direction_governor", "correlation": corr_detail, "selected": selected.__dict__, "risk_decision": risk_decision.to_dict(), "profit_preview": profit_preview})
+            continue
+
+        for attr in ("near_miss_pass", "expected_net_pct", "expected_tp1_net_pct"):
+            setattr(selected, attr, profit_preview.get(attr))
         trade = execute_entry(client, cfg, instruments[selected.inst_id], selected, equity, risk_decision=risk_decision, positions=positions)
         rec = {"event": "TRADE_ATTEMPTED", "selected": selected.__dict__, "risk_decision": risk_decision.to_dict(), "profit_preview": profit_preview, "trade": trade, **base_snapshot}
         rec["snapshot"] = save_snapshot({**base_snapshot, "signals": [s.__dict__ for s in signals], "decision": rec})

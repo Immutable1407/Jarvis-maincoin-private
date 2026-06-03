@@ -49,7 +49,7 @@ def test_seen_state_trims_oldest_not_lexicographic(tmp_path, monkeypatch):
     assert "z-old" not in raw["seen_at"]
 
 
-def test_package_version_matches_v1_3():
+def test_package_version_matches_v1_4():
     import jarvis_mi
-    assert jarvis_mi.__version__ == "1.3.0"
+    assert jarvis_mi.__version__ == "1.4.1"
 

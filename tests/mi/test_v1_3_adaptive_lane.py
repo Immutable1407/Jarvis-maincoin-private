@@ -1,6 +1,7 @@
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, "/root/jarvis-mi")
 
@@ -38,11 +39,13 @@ def _cfg():
     )
 
 
-def test_v13_near_miss_high_quality_candidate_passes_when_tp1_fee_positive():
-    ok, preview = lane_profit_gate(DummySignal(), DummyRisk(), DummySize(notional=6.0), equity=100.0, cfg=_cfg())
+def test_v13_near_miss_high_quality_candidate_passes_when_tp1_fee_positive(tmp_path):
+    (tmp_path / "lane_feedback.jsonl").write_text("{}\n", encoding="utf-8")
+    with patch("jarvis_mi.governors.STATE_DIR", tmp_path):
+        ok, preview = lane_profit_gate(DummySignal(), DummyRisk(), DummySize(notional=6.0), equity=100.0, cfg=_cfg())
     assert ok is True
     assert preview["near_miss_pass"] is True
-    assert preview["gate_version"] == "v1.3.0"
+    assert preview["gate_version"] == "v1.4.1"
 
 
 def test_v13_poor_candidate_still_rejected():
