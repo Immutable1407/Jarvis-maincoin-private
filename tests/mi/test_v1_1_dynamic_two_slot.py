@@ -26,7 +26,7 @@ class TestV11DynamicTwoSlot(unittest.TestCase):
             expected_main_uid="m",
             allowed_insts=("BTC-USDT-SWAP", "ETH-USDT-SWAP", "SOL-USDT-SWAP", "BNB-USDT-SWAP"),
         )
-        self.assertEqual(cfg.strategy_tag, "mi_v1_4_1_entry_report_fail_loud_hotfix")
+        self.assertEqual(cfg.strategy_tag, "mi_v1_4_2_attribution_enhancement")
         self.assertGreater(cfg.min_expected_net_profit_pct, cfg.altcoin_profit_baseline_pct)
         self.assertIsNotNone(cfg.lane_min_expected_net_profit_pct)
         self.assertEqual(cfg.active_max_positions, 2)

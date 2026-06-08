@@ -158,7 +158,49 @@ def daily_brief() -> str:
         f"{p.get('instId')} {p.get('posSide')} pos={p.get('pos')} upl={p.get('upl')}"
         for p in positions
     ) or "none"
-    lane_state = "v1.4车道归因 + 反馈near-miss + 同向相关仓位Governor"
+
+    # ── v1.4.2 attribution summary ──
+    from .attribution import summarize_attribution
+    attr = summarize_attribution(fills, decisions, guardian, day=day)
+
+    # 归因总览
+    attr_overview = f"已实现费后净额: {attr['total_realized_net']:.4f} USDT, 手续费: {attr['total_fees']:.4f}, 去重成交: {attr['total_fill_count']}, 未知归因: {attr['unknown_attribution']['count']}"
+
+    # Lane贡献
+    lane_lines = []
+    for lane_name, ld in attr["by_lane"].items():
+        lane_lines.append(
+            f"{lane_name}: net={ld['realized_net']:+.4f}  fills={ld['fill_count']}  "
+            f"win/loss={ld['win_count']}/{ld['loss_count']}  "
+            f"avg={ld['avg_net_per_fill']:+.4f}  fees={ld['fees']:.4f}"
+        )
+    lane_contrib = "; ".join(lane_lines) if lane_lines else "无"
+
+    # Near-miss质量
+    nm_normal = attr["by_near_miss"].get("false", {})
+    nm_pass = attr["by_near_miss"].get("true", {})
+    near_miss_text = (
+        f"near-miss: net={nm_pass.get('realized_net', 0):+.4f} fills={nm_pass.get('fill_count', 0)}; "
+        f"normal: net={nm_normal.get('realized_net', 0):+.4f} fills={nm_normal.get('fill_count', 0)}"
+    )
+
+    # 退出归因
+    exit_lines = []
+    for er, ed in attr["by_exit_rule"].items():
+        if ed["fill_count"] > 0:
+            exit_lines.append(f"{er}: net={ed['realized_net']:+.4f} fills={ed['fill_count']}")
+    exit_text = "; ".join(exit_lines) if exit_lines else "无退出归因数据"
+
+    # 需要观察
+    observations = []
+    if attr["unknown_attribution"]["count"] > max(3, attr["total_fill_count"] * 0.1):
+        observations.append(f"未知归因过高({attr['unknown_attribution']['count']}/{attr['total_fill_count']})")
+    for lane_name, ld in attr["by_lane"].items():
+        if ld["fill_count"] >= 2 and ld["realized_net"] < 0:
+            observations.append(f"{lane_name}有成交但净亏损({ld['realized_net']:+.4f})")
+    watch_text = "; ".join(observations) if observations else "无特别关注项"
+
+    lane_state = "v1.4.2车道归因 + 反馈near-miss + 同向相关仓位Governor + 冷路径归因报告"
     text = [
         f"# Hermes Mi 主流币策略简报 {day}",
         "",
@@ -175,6 +217,18 @@ def daily_brief() -> str:
         f"- 当前仓位: {len(positions)}/{cfg.active_max_positions}",
         f"- 当前仓位/UPL: {position_text}",
         f"- 估算组合保证金: {margin_used:.4f} USDT ({margin_pct:.1%})",
+        # ── v1.4.2 attribution sections ──
+        f"## 归因总览",
+        f"- {attr_overview}",
+        f"## Lane贡献",
+        f"- {lane_contrib}",
+        f"## Near-miss质量",
+        f"- {near_miss_text}",
+        f"## 退出归因",
+        f"- {exit_text}",
+        f"## 需要观察",
+        f"- {watch_text}",
+        # ── Legacy summary lines ──
         f"- 今日已实现费后净额(北京时间去重fills): {realized_net:.4f} USDT",
         f"- 今日去重成交数: {dedupe_fills}",
         f"- 全量累计费后净额(去重fills): {total_realized_net:.4f} USDT / {total_dedupe_fills} fills",
@@ -187,7 +241,7 @@ def daily_brief() -> str:
     text += [
         f"- 近100条被阻断/暂停决策: {len(blocked)} 条",
         "",
-        "简要结论：v1.4.1 保留v1.4车道归因并加入entry/report fail-loud热修；v1.4.0 已加入车道归因、反馈式near-miss冷却、同向相关仓位Governor和Guardian原因冷却；重点观察各lane真实费后贡献、near-miss样本质量、第二仓相关风险、Guardian退出原因与当前UPL。",
+        "简要结论：v1.4.2 归因增强版，保留v1.4.1全部交易行为，新增冷路径归因层可回答：各lane真实费后贡献、near-miss盈亏质量、Guardian退出规则效果、未知归因占比。v1.4.1/1.4.0 已加入车道归因、反馈式near-miss冷却、同向相关仓位Governor和Guardian原因冷却。",
     ]
     out = "\n".join(text) + "\n"
     p = REPORT_DIR / "daily" / f"{day}.md"

@@ -9,6 +9,18 @@
 - Runtime data under `data/` and reports under `reports/` are not committed.
 - LLMs do not enter the hot path. Strategy loops are pure Python.
 
+## v1.4.2 current state
+
+- **v1.4.2 is the current live version** — attribution-only upgrade over v1.4.1. No trading behavior changed.
+- Strategy tag: `mi_v1_4_2_attribution_enhancement`.
+- New cold-path attribution layer: `jarvis_mi/attribution.py` with `summarize_attribution()`.
+- New audit script: `scripts/mi/mi_attribution_audit.py` (read-only, safe for GPT-5.5/Sir).
+- Enhanced fill enrichment persists: strategy_lane, near_miss_pass, expected_net_pct, score, fill_role, attribution_group_key, context fields.
+- Daily brief upgraded with sections: 归因总览, Lane贡献, Near-miss质量, 退出归因, 需要观察.
+- All v1.4.1 trading parameters preserved unchanged.
+
+## v1.4.2 planning target (historical — completed)
+
 ## v1.4.1 live gates
 
 - Patch over v1.4.0: entry/report fail-loud hotfix; v1.4.0 kept lane attribution, feedback-based near-miss cooldown, correlated same-direction governor, Guardian exit cooldowns, and richer daily brief.
@@ -36,7 +48,9 @@
 
 ## Docs pointer
 
-- `docs/HERMES_MI_ARCHITECTURE.md` — current v1.4.1 architecture, data flow, gates, cron jobs.
+- `docs/HERMES_MI_ARCHITECTURE.md` — current v1.4.2 architecture, data flow, gates, cron jobs.
+- `docs/V1_4_2_RELEASE.md` — v1.4.2 attribution-only release notes.
+- `docs/V1_4_2_ATTRIBUTION_PLAN_DEEPSEEK.md` — v1.4.2 attribution-only upgrade plan (implemented by DeepSeek).
 - `docs/V1_4_1_RELEASE.md` — v1.4.1 entry/report fail-loud hotfix notes.
 - `docs/V1_4_0_RELEASE.md` — v1.4.0 lane attribution + correlated short governor release notes.
 - `docs/V1_3_0_RELEASE.md` — v1.3.0 adaptive lane profit engine release notes.
@@ -54,18 +68,19 @@ python3 -m compileall -q jarvis_mi scripts/mi tests/mi
 python3 -m unittest discover -s tests/mi -v
 python3 scripts/mi/mi_healthcheck.py
 python3 scripts/mi/mi_guardian.py
-python3 scripts/mi/mi_live_cycle.py  # can place a live order if v1.4.1 signal and portfolio/profit/correlation gates pass
+python3 scripts/mi/mi_live_cycle.py  # can place a live order if v1.4.2 signal and portfolio/profit/correlation gates pass
 python3 scripts/mi/mi_sync_fills.py
+python3 scripts/mi/mi_attribution_audit.py
 python3 scripts/mi/mi_daily_review.py
 ```
 
 ## Cron jobs
 
-- `bc97ef299d9f` — Hermes Mi v1.4.1 maincoin live cycle, every 15m, local, `jarvis_mi_live_cycle.sh`.
-- `dcb5a389e2d4` — Hermes Mi v1.4.1 guardian, every 5m, local, `jarvis_mi_guardian.sh`.
-- `4d7fbee50ff9` — Hermes Mi v1.4.1 healthcheck, every 120m, local, `jarvis_mi_healthcheck.sh`.
-- `aded3c6554f3` — Hermes Mi v1.4.1 fill sync, every 10m, local, `jarvis_mi_sync_fills.sh`.
-- `65b8d9feb0b3` — Hermes Mi v1.4.1 daily maincoin brief, 21:00 UTC+8, delivered to Feishu, `jarvis_mi_daily_review.sh`.
+- `bc97ef299d9f` — Hermes Mi v1.4.2 maincoin live cycle, every 15m, local, `jarvis_mi_live_cycle.sh`.
+- `dcb5a389e2d4` — Hermes Mi v1.4.2 guardian, every 5m, local, `jarvis_mi_guardian.sh`.
+- `4d7fbee50ff9` — Hermes Mi v1.4.2 healthcheck, every 120m, local, `jarvis_mi_healthcheck.sh`.
+- `aded3c6554f3` — Hermes Mi v1.4.2 fill sync, every 10m, local, `jarvis_mi_sync_fills.sh`.
+- `65b8d9feb0b3` — Hermes Mi v1.4.2 daily maincoin brief, 21:00 UTC+8, delivered to Feishu, `jarvis_mi_daily_review.sh`.
 - `f65da2f01c13` — combined maincoin+altcoin weekly summary, Sunday 22:00 UTC+8, delivered to Feishu; Hermes cron job, not a project script.
 
 Feishu notification policy is summary-only: BTC-AHR999 DCA, Jarvis v4 daily recap, Hermes Mi daily brief, and Sunday combined weekly summary. Hermes Mi live-cycle/guardian/health/fill-sync jobs stay local.

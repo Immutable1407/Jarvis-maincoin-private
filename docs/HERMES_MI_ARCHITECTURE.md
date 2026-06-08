@@ -1,8 +1,8 @@
-# Hermes Mi v1.4.0 Maincoin Strategy Architecture
+# Hermes Mi v1.4.2 Maincoin Strategy Architecture
 
 ## Purpose
 
-Hermes Mi is a dedicated OKX maincoin perpetual strategy isolated from BTC-AHR999 and Jarvis v4 altcoin trading. v1.4.0 keeps the v1.3 adaptive three-lane BTC/ETH/SOL/BNB engine and adds lane attribution, feedback-based near-miss cooldowns, correlated same-direction exposure governance, Guardian exit cooldowns, fill-sync dedupe, and monotonic guardian trailing.
+Hermes Mi is a dedicated OKX maincoin perpetual strategy isolated from BTC-AHR999 and Jarvis v4 altcoin trading. v1.4.2 is an attribution-only upgrade over v1.4.1: it adds cold-path PnL attribution, exit attribution, and board-level reporting without changing entry/exit strategy behavior. The hot path remains identical to v1.4.1.
 
 ## Account and instrument boundaries
 
@@ -20,7 +20,7 @@ Every private read/write path must verify UID/mainUid before acting. Non-whiteli
 
 ## Live gates
 
-- `strategy_tag = mi_v1_4_0_lane_attribution_correlated_short_governor`
+- `strategy_tag = mi_v1_4_2_attribution_enhancement`
 - `active_max_positions = 2`
 - `enable_second_position = True`
 - `enable_rotation = False`
@@ -100,10 +100,11 @@ High volatility (`ATR / price > 3.5%`) caps leverage to 8x and scales margin/los
 
 The entry path still places an exchange-side standalone hard stop. Breakeven/trailing are local guardian-enforced; exchange-side cancel/replace hardening is future work.
 
-## Fill sync and reports
+## Fill sync, attribution audit, and reports
 
-- `scripts/mi/mi_sync_fills.py`: syncs OKX fills every 10m to local ledgers and dedupes fills by stable keys.
-- `scripts/mi/mi_daily_review.py`: emits a concise daily maincoin brief with v1.4.0 status, active lanes, realized net after fees, dedup fill count, lane/near-miss summary, top rejection reason, Guardian exit counts, current positions/UPL, max positions, portfolio margin estimate, and blocked decision count.
+- `scripts/mi/mi_sync_fills.py`: syncs OKX fills every 10m to local ledgers and dedupes fills by stable keys. Enriches fills with v1.4.2 attribution metadata (strategy_lane, near_miss_pass, fill_role, attribution_group_key, expected_net_pct, score, context fields).
+- `scripts/mi/mi_attribution_audit.py`: **new in v1.4.2** — read-only attribution audit command. Reads decisions/fills/guardian ledgers and prints lane PnL, near-miss quality, exit-rule attribution, and unknown-attribution samples. Supports `--day YYYY-MM-DD` and `--json`. Safe for GPT-5.5/Sir to inspect without touching live orders.
+- `scripts/mi/mi_daily_review.py`: emits a concise daily maincoin brief with v1.4.2 status, active lanes, attribution overview, lane contribution, near-miss quality, exit attribution, watch items, plus all legacy summary lines.
 - Runtime data lives under `/root/jarvis-mi/data/` and `/root/jarvis-mi/reports/` and must never be committed.
 
 ## Cron jobs
@@ -127,6 +128,7 @@ python3 -m unittest discover -s tests/mi -v
 python3 scripts/mi/mi_healthcheck.py
 # Do not run mi_live_cycle.py as routine verification; it can place a live order.
 python3 scripts/mi/mi_sync_fills.py
+python3 scripts/mi/mi_attribution_audit.py
 python3 scripts/mi/mi_daily_review.py
 ```
 
@@ -136,6 +138,6 @@ python3 scripts/mi/mi_daily_review.py
 
 - Private repo: `Immutable1407/Jarvis-maincoin-private`
 - Remote: `git@github.com-jarvis:Immutable1407/Jarvis-maincoin-private.git`
-- Release tag: `v1.4.0-lane-attribution-correlated-short-governor`
+- Release tag: `v1.4.2-attribution-enhancement`
 
 Before pushing, scan staged files for secrets and confirm no `/data/`, `/reports/`, `.env*`, `.jsonl`, account snapshots, fills, or ledgers are committed.

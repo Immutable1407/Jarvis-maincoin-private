@@ -26,7 +26,7 @@ hermes cron list --all
 
 Relevant jobs:
 
-- `bc97ef299d9f` — v1.4.0 live cycle, every 15m, local.
+- `bc97ef299d9f` — v1.4.2 live cycle, every 15m, local.
 - `dcb5a389e2d4` — guardian, every 5m, local.
 - `4d7fbee50ff9` — healthcheck, every 120m, local.
 - `aded3c6554f3` — fill sync, every 10m, local.
@@ -73,10 +73,22 @@ python3 -m unittest discover -s tests/mi -v
 python3 scripts/mi/mi_healthcheck.py
 python3 scripts/mi/mi_guardian.py
 python3 scripts/mi/mi_sync_fills.py
+python3 scripts/mi/mi_attribution_audit.py
 python3 scripts/mi/mi_daily_review.py
 ```
 
-`python3 scripts/mi/mi_live_cycle.py` can place a live order if a strict v1.4.0 lane signal passes portfolio, guardian-cooldown, dynamic percent-profit, feedback near-miss, and correlated same-direction governor gates. Do not use it for read-only verification.
+`python3 scripts/mi/mi_live_cycle.py` can place a live order if a strict v1.4.2 lane signal passes portfolio, guardian-cooldown, dynamic percent-profit, feedback near-miss, and correlated same-direction governor gates. Do not use it for read-only verification.
+
+## Attribution audit (new in v1.4.2)
+
+Inspect attribution without touching live orders:
+
+```bash
+cd /root/jarvis-mi
+export PYTHONPATH=/root/jarvis-mi
+python3 scripts/mi/mi_attribution_audit.py --day $(TZ=Asia/Shanghai date +%F)
+python3 scripts/mi/mi_attribution_audit.py --day $(TZ=Asia/Shanghai date +%F) --json
+```
 
 ## Logs, ledgers, and reports
 
