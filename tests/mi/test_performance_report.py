@@ -17,7 +17,7 @@ class PerformanceReportTests(unittest.TestCase):
         }
         with mock.patch.dict(os.environ, env, clear=False):
             text = daily_brief()
-        self.assertIn("v1.4.2-attribution-enhancement", text)
+        self.assertIn("v1.4.3-stop-algo-schema-hotfix", text)
         self.assertIn("trend_confirmed / trend_probe / range_swing", text)
         self.assertIn("最低净收益门槛", text)
         self.assertIn("v1.4车道门槛", text)

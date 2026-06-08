@@ -8,6 +8,7 @@ Hermes Mi 主流币策略使用语义化版本：`MAJOR.MINOR.PATCH`。
 
 ## 当前版本
 
+- `v1.4.3` — stop-algo schema hotfix（2026-06-08）：OKX entry 后独立止损 algo 改用 `slTriggerPx/slOrdPx/slTriggerPxType`，修复 OKX 50015；不改变交易阈值、仓位、杠杆或 Guardian 行为。
 - `v1.4.2` — attribution enhancement（2026-06-08）：新增冷路径归因层、只读 attribution audit、日报归因板块；不改变交易阈值、仓位、杠杆或 Guardian 行为。
 
 ## 历史版本

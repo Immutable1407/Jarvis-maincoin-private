@@ -121,7 +121,21 @@ class OKXMiClient:
         return self.request("POST", "/api/v5/trade/order", body=body)
 
     def place_stop_algo(self, inst_id: str, close_side: str, sz: str, trigger_px: str, pos_side: str | None = None) -> dict[str, Any]:
-        body = {"instId": inst_id, "tdMode": self.cfg.td_mode, "side": close_side, "ordType": "conditional", "sz": sz, "triggerPx": trigger_px, "orderPx": "-1", "triggerPxType": "last", "reduceOnly": "true"}
+        # OKX /api/v5/trade/order-algo conditional stop-loss orders require the
+        # stop-loss specific field names. The generic triggerPx/orderPx fields
+        # are accepted by neither live nor simulated OKX for this endpoint and
+        # produce: 50015 Either parameter tpTriggerPx or slTriggerPx is required.
+        body = {
+            "instId": inst_id,
+            "tdMode": self.cfg.td_mode,
+            "side": close_side,
+            "ordType": "conditional",
+            "sz": sz,
+            "slTriggerPx": trigger_px,
+            "slOrdPx": "-1",
+            "slTriggerPxType": "last",
+            "reduceOnly": "true",
+        }
         if self._pos_mode() == "long_short_mode" and pos_side in {"long", "short"}:
             body["posSide"] = pos_side
         return self.request("POST", "/api/v5/trade/order-algo", body=body)

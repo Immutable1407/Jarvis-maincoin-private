@@ -1,4 +1,4 @@
-# Hermes Mi v1.4.2 Maincoin Strategy Architecture
+# Hermes Mi v1.4.3 Maincoin Strategy Architecture
 
 ## Purpose
 
@@ -20,7 +20,7 @@ Every private read/write path must verify UID/mainUid before acting. Non-whiteli
 
 ## Live gates
 
-- `strategy_tag = mi_v1_4_2_attribution_enhancement`
+- `strategy_tag = mi_v1_4_3_stop_algo_schema_hotfix`
 - `active_max_positions = 2`
 - `enable_second_position = True`
 - `enable_rotation = False`
@@ -138,6 +138,6 @@ python3 scripts/mi/mi_daily_review.py
 
 - Private repo: `Immutable1407/Jarvis-maincoin-private`
 - Remote: `git@github.com-jarvis:Immutable1407/Jarvis-maincoin-private.git`
-- Release tag: `v1.4.2-attribution-enhancement`
+- Release tag: `v1.4.3-stop-algo-schema-hotfix`
 
 Before pushing, scan staged files for secrets and confirm no `/data/`, `/reports/`, `.env*`, `.jsonl`, account snapshots, fills, or ledgers are committed.

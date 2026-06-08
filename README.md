@@ -4,8 +4,8 @@
 
 ## 当前董事会存档版本
 
-- 当前版本：`v1.4.2-attribution-enhancement`
-- 策略标签：`mi_v1_4_2_attribution_enhancement`
+- 当前版本：`v1.4.3-stop-algo-schema-hotfix`
+- 策略标签：`mi_v1_4_3_stop_algo_schema_hotfix`
 - 性质：归因增强版本；不改变交易阈值、仓位、杠杆、风控或 Guardian 行为。
 - 标的范围：`BTC-USDT-SWAP`、`ETH-USDT-SWAP`、`SOL-USDT-SWAP`、`BNB-USDT-SWAP`
 - 账户边界：专用 OKX 子账户 UID `845800098641991226`，只读取 `HERMES_MI_OKX_*` 凭证。
@@ -33,6 +33,7 @@ Hermes Mi 是主流币趋势/共振策略，核心不是高频扫全市场，而
 - `v1.4.0`：lane 归因、near-miss 反馈冷却、同向相关性 governor、Guardian 退出冷却。
 - `v1.4.1`：entry/report fail-loud 热修复；OKX entry ordId/止损响应校验、BJT 日级 PnL。
 - `v1.4.2`：归因增强；新增 attribution 模块、只读审计脚本、增强日结归因，不改变交易行为。
+- `v1.4.3`：OKX stop-algo schema 热修复；入场后独立止损 algo 使用 `slTriggerPx/slOrdPx/slTriggerPxType`，避免 OKX 50015。
 
 ## 仓库结构
 

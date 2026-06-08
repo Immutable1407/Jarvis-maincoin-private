@@ -37,8 +37,8 @@ class TestV142VersionMetadata(unittest.TestCase):
             expected_uid="u", expected_main_uid="m",
             allowed_insts=("BTC-USDT-SWAP", "ETH-USDT-SWAP", "SOL-USDT-SWAP", "BNB-USDT-SWAP"),
         )
-        self.assertIn("v1.4.2", cfg.system_version)
-        self.assertIn("mi_v1_4_2", cfg.strategy_tag)
+        self.assertIn("v1.4.3", cfg.system_version)
+        self.assertIn("mi_v1_4_3", cfg.strategy_tag)
         self.assertNotIn("v1.4.1", cfg.system_version)
 
     def test_trading_params_unchanged(self):
@@ -331,8 +331,8 @@ class TestV142DailyBrief(unittest.TestCase):
             text = daily_brief()
 
         # v1.4.2 version
-        self.assertIn("v1.4.2-attribution-enhancement", text)
-        self.assertIn("mi_v1_4_2_attribution_enhancement", text)
+        self.assertIn("v1.4.3-stop-algo-schema-hotfix", text)
+        self.assertIn("mi_v1_4_3_stop_algo_schema_hotfix", text)
 
         # New v1.4.2 sections
         self.assertIn("归因总览", text)

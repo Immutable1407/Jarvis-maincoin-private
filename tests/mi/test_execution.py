@@ -1,5 +1,7 @@
 import unittest
+from typing import Any, cast
 from jarvis_mi.execution import reduce_only_fraction, execute_entry
+from jarvis_mi.okx_mi_client import OKXMiClient
 from types import SimpleNamespace
 
 class DummyClient:
@@ -27,6 +29,27 @@ class TestExecution(unittest.TestCase):
         self.assertEqual(rec['event'], 'REDUCE_ONLY_PARTIAL')
         self.assertEqual(c.orders[0][2], '0.61')
         self.assertEqual(c.orders[0][3], 'short')
+
+    def test_place_stop_algo_uses_okx_stop_loss_fields(self):
+        class CaptureClient(OKXMiClient):
+            def __init__(self):
+                cfg = SimpleNamespace(td_mode='cross', api_key='k', secret_key='s', passphrase='p', simulated='0')
+                super().__init__(cast(Any, cfg))
+                self.body = None
+            def _pos_mode(self):
+                return 'long_short_mode'
+            def request(self, method, path, params=None, body=None, auth=True):
+                self.body = body
+                return {'code': '0', 'data': [{'algoId': 's'}]}
+        c = CaptureClient()
+        c.place_stop_algo('ETH-USDT-SWAP', 'sell', '0.12', '98.5', pos_side='long')
+        assert c.body is not None
+        self.assertEqual(c.body['slTriggerPx'], '98.5')
+        self.assertEqual(c.body['slOrdPx'], '-1')
+        self.assertEqual(c.body['slTriggerPxType'], 'last')
+        self.assertNotIn('triggerPx', c.body)
+        self.assertNotIn('orderPx', c.body)
+        self.assertEqual(c.body['posSide'], 'long')
 
 if __name__ == '__main__':
     unittest.main()
