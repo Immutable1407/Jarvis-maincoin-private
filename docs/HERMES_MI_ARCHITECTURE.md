@@ -1,8 +1,10 @@
-# Hermes Mi v1.4.3 Maincoin Strategy Architecture
+
+# Hermes Mi v2.0.0 Maincoin Strategy Architecture
 
 ## Purpose
 
-Hermes Mi is a dedicated OKX maincoin perpetual strategy isolated from BTC-AHR999 and Jarvis v4 altcoin trading. v1.4.2 is an attribution-only upgrade over v1.4.1: it adds cold-path PnL attribution, exit attribution, and board-level reporting without changing entry/exit strategy behavior. The hot path remains identical to v1.4.1.
+Hermes Mi is a dedicated OKX maincoin perpetual strategy isolated from BTC-AHR999 and Jarvis v4 altcoin trading. v2.0.0 is the regime-adaptive maincoin foundation: deterministic market structure classification, trend-wear governance, mode routing, second confirmation, range-survive gating, and mode-specific RiskLadderV2 are in the hot path before the existing portfolio/profit/correlation/execution guards.
+
 
 ## Account and instrument boundaries
 
@@ -20,7 +22,9 @@ Every private read/write path must verify UID/mainUid before acting. Non-whiteli
 
 ## Live gates
 
-- `strategy_tag = mi_v1_4_3_stop_algo_schema_hotfix`
+
+- `strategy_tag = mi_v2_0_0_regime_adaptive_maincoin`
+
 - `active_max_positions = 2`
 - `enable_second_position = True`
 - `enable_rotation = False`
@@ -33,6 +37,7 @@ Every private read/write path must verify UID/mainUid before acting. Non-whiteli
 - same-direction second-position governor: low-quality additions are blocked unless score >= 84 or lane is `trend_confirmed`
 - margin mode: cross
 - hot path: deterministic Python only, no LLM order decisioning
+- v2 mode routing: WAIT no entry; CHOP range-only when high quality; TRANSITION probe-only; TREND normal only after second confirmation
 
 The profit baseline is dynamic percentage-based, not fixed USDT. Candidate expected net profit must scale with current equity and pass the lane-specific threshold; near-miss entries are tightly gated rather than unconditional.
 
@@ -45,6 +50,18 @@ The profit baseline is dynamic percentage-based, not fixed USDT. Candidate expec
 The live cycle evaluates ranked candidates and now continues to later candidates if the top candidate fails portfolio or percent-profit gates.
 
 ## Risk ladder
+
+v2.0.0 uses `RiskLadderV2` before sizing:
+
+- WAIT: 0x, 0% margin/loss, no new entries.
+- CHOP: range_swing only, 3x-5x, tiny/conservative max loss, one position.
+- TRANSITION: probe only, 5x-6x, no second position.
+- TREND: trend_confirmed normal 8x-10x only after second confirmation; trend_probe reduced; second position only in clean confirmed trend.
+- Trend wear and drawdown overrides can only reduce risk.
+
+Legacy v1 risk ladder is retained as reference but not the primary v2 candidate risk decision.
+
+## Legacy v1 risk ladder reference
 
 - paused: 0x, 0% margin, no new entries
 - range_swing: about 6x, 16% margin, about 1.2% max loss before volatility/resonance multipliers
@@ -75,16 +92,18 @@ High volatility (`ATR / price > 3.5%`) caps leverage to 8x and scales margin/los
    - aligned long/short
    - BTC/alt divergence
    - mixed state
-9. Score three-lane signals with lane-specific reason codes.
-10. Apply market-state direction gate.
-11. Sort candidates by score and evaluate them in order.
-12. Apply portfolio gate: max two positions, no duplicate symbol, no mixed long/short by default.
-13. Compute lane-aware dynamic risk decision.
-14. Preview expected full-trade net profit as a percentage of equity and require it to exceed the lane-aware threshold, or pass the controlled near-miss gate.
-15. Apply same-instrument/side Guardian-exit cooldowns and correlated same-direction governor.
-16. Compute size and enforce portfolio margin guard inside `execute_entry`.
-17. Submit market entry and standalone reduce-only stop only if all gates pass.
-18. Save local snapshot and decision ledger.
+9. Classify v2 market structure, trend wear, and route mode; any v2 error fails closed to WAIT/no entry.
+10. Score three-lane signals with lane-specific reason codes.
+11. Apply market-state direction gate.
+12. Sort candidates by score and evaluate them in order.
+13. Apply v2 mode/lane permissions, second-confirmation gate, and range-survive gate.
+14. Apply portfolio gate: max two positions only when v2 mode allows a second position, no duplicate symbol, no mixed long/short by default.
+15. Compute RiskLadderV2 mode-specific risk decision.
+16. Preview expected full-trade net profit as a percentage of equity and require it to exceed the lane-aware threshold, or pass the controlled near-miss gate.
+17. Apply same-instrument/side Guardian-exit cooldowns and correlated same-direction governor.
+18. Compute size and enforce portfolio margin guard inside `execute_entry`.
+19. Submit market entry and standalone reduce-only stop only if all gates pass.
+20. Save local snapshot and decision ledger, including v2 context and counterfactual blocks.
 
 ## Guardian and exits
 
@@ -104,7 +123,9 @@ The entry path still places an exchange-side standalone hard stop. Breakeven/tra
 
 - `scripts/mi/mi_sync_fills.py`: syncs OKX fills every 10m to local ledgers and dedupes fills by stable keys. Enriches fills with v1.4.2 attribution metadata (strategy_lane, near_miss_pass, fill_role, attribution_group_key, expected_net_pct, score, context fields).
 - `scripts/mi/mi_attribution_audit.py`: **new in v1.4.2** — read-only attribution audit command. Reads decisions/fills/guardian ledgers and prints lane PnL, near-miss quality, exit-rule attribution, and unknown-attribution samples. Supports `--day YYYY-MM-DD` and `--json`. Safe for GPT-5.5/Sir to inspect without touching live orders.
-- `scripts/mi/mi_daily_review.py`: emits a concise daily maincoin brief with v1.4.2 status, active lanes, attribution overview, lane contribution, near-miss quality, exit attribution, watch items, plus all legacy summary lines.
+
+- `scripts/mi/mi_daily_review.py`: emits a concise daily maincoin brief with v2 regime/mode, confidence/reasons, active risk tier, wear diagnostics, counterfactual summary, active lanes, attribution overview, lane contribution, near-miss quality, exit attribution, watch items, plus legacy summary lines.
+
 - Runtime data lives under `/root/jarvis-mi/data/` and `/root/jarvis-mi/reports/` and must never be committed.
 
 ## Cron jobs
@@ -138,6 +159,8 @@ python3 scripts/mi/mi_daily_review.py
 
 - Private repo: `Immutable1407/Jarvis-maincoin-private`
 - Remote: `git@github.com-jarvis:Immutable1407/Jarvis-maincoin-private.git`
-- Release tag: `v1.4.3-stop-algo-schema-hotfix`
+
+- Release tag: `v2.0.0-regime-adaptive-maincoin-foundation`
+
 
 Before pushing, scan staged files for secrets and confirm no `/data/`, `/reports/`, `.env*`, `.jsonl`, account snapshots, fills, or ledgers are committed.

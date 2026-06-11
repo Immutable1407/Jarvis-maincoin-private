@@ -6,7 +6,7 @@ from jarvis_mi.performance import daily_brief
 
 
 class PerformanceReportTests(unittest.TestCase):
-    def test_daily_brief_uses_current_v1_4_version_text(self):
+    def test_daily_brief_uses_current_v2_version_text(self):
         env = {
             "HERMES_MI_OKX_API_KEY": "x",
             "HERMES_MI_OKX_SECRET_KEY": "x",
@@ -17,8 +17,11 @@ class PerformanceReportTests(unittest.TestCase):
         }
         with mock.patch.dict(os.environ, env, clear=False):
             text = daily_brief()
-        self.assertIn("v1.4.3-stop-algo-schema-hotfix", text)
+
+        self.assertIn("v2.0.0-regime-adaptive-maincoin-foundation", text)
+
         self.assertIn("trend_confirmed / trend_probe / range_swing", text)
+        self.assertIn("v2当前regime/mode", text)
         self.assertIn("最低净收益门槛", text)
         self.assertIn("v1.4车道门槛", text)
         self.assertIn("Guardian退出计数", text)

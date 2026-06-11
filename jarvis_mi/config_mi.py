@@ -45,8 +45,11 @@ class MiConfig:
     max_loss_pct: float = 0.03
     min_expected_r: float = 1.5
     max_daily_realized_loss_pct: float = 0.10
-    system_version: str = "v1.4.3-stop-algo-schema-hotfix"
-    strategy_tag: str = "mi_v1_4_3_stop_algo_schema_hotfix"
+
+    system_version: str = "v2.0.0-regime-adaptive-maincoin-foundation"
+    strategy_tag: str = "mi_v2_0_0_regime_adaptive_maincoin"
+    enable_v2_regime_adaptive: bool = True
+
     # v1.2.0: percent-based profit baseline. Maincoin target slope should exceed
     # altcoin's dynamic per-trade equity share, not use a fixed USDT target.
     altcoin_profit_baseline_pct: float = 0.012

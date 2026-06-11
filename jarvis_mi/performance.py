@@ -135,6 +135,10 @@ def daily_brief() -> str:
     fills = _read_jsonl("fills.jsonl")
     guardian = _read_jsonl("guardian.jsonl")
     latest = decisions[-1] if decisions else {}
+    latest_v2 = latest.get("v2") or {}
+    latest_structure = latest_v2.get("structure") or {}
+    latest_mode = latest_v2.get("mode") or {}
+    latest_wear = latest_v2.get("trend_wear") or {}
     positions = latest.get("positions") or []
     equity = latest.get("equity")
     margin_used = portfolio_margin_used(positions) if positions else 0.0
@@ -159,9 +163,13 @@ def daily_brief() -> str:
         for p in positions
     ) or "none"
 
-    # ── v1.4.2 attribution summary ──
+
+    # ── v2.0.0 attribution/counterfactual summary ──
     from .attribution import summarize_attribution
+    from .counterfactual import summarize_counterfactuals
     attr = summarize_attribution(fills, decisions, guardian, day=day)
+    cf = summarize_counterfactuals(limit=200)
+
 
     # 归因总览
     attr_overview = f"已实现费后净额: {attr['total_realized_net']:.4f} USDT, 手续费: {attr['total_fees']:.4f}, 去重成交: {attr['total_fill_count']}, 未知归因: {attr['unknown_attribution']['count']}"
@@ -200,7 +208,14 @@ def daily_brief() -> str:
             observations.append(f"{lane_name}有成交但净亏损({ld['realized_net']:+.4f})")
     watch_text = "; ".join(observations) if observations else "无特别关注项"
 
-    lane_state = "v1.4.2车道归因 + 反馈near-miss + 同向相关仓位Governor + 冷路径归因报告"
+
+    mode_pnl_text = "TREND/TRANSITION/RANGE/WAIT: 冷路径占位，等待v2成交按mode回填"
+    cf_text = f"blocked_total={cf.get('blocked_total', 0)}, by_reason={cf.get('by_reason', {})}, by_lane={cf.get('by_lane', {})}"
+    v2_reason_text = ",".join(latest_mode.get("mode_reason_codes") or latest_structure.get("reason_codes") or []) or "none"
+    wear_text = f"level={latest_wear.get('wear_level', 'unknown')} no_mfe={latest_wear.get('no_mfe_count', 0)} stopout={latest_wear.get('stopout_count', 0)} loss={latest_wear.get('loss_count', 0)} actions={latest_wear.get('actions', [])}"
+
+    lane_state = "v2.0.0 regime-adaptive foundation: MarketStructure -> Wear -> ModeRouter -> Confirmation/Range -> RiskLadderV2"
+
     text = [
         f"# Hermes Mi 主流币策略简报 {day}",
         "",
@@ -210,6 +225,10 @@ def daily_brief() -> str:
         f"- 最低净收益门槛: {cfg.min_expected_net_profit_pct:.2%} equity",
         f"- v1.4车道门槛: {lane_threshold_text}; near-miss≥{cfg.near_miss_profit_gate_ratio:.0%}、TP1费后为正且反馈未冷却",
         f"- 同向第二仓Governor: score≥{cfg.correlated_add_min_score:.0f}或trend_confirmed才允许低相关质量加仓",
+        f"- v2当前regime/mode: {latest_structure.get('structure_regime', 'unknown')} / {latest_mode.get('mode', 'unknown')}",
+        f"- v2 confidence/reasons: {latest_structure.get('structure_confidence', 'unknown')} / {v2_reason_text}",
+        f"- v2 active risk tier/drawdown override: {latest_mode.get('risk_tier', 'unknown')} lev≤{latest_mode.get('max_leverage', 'unknown')} max_loss≤{latest_mode.get('max_loss_pct', 'unknown')}",
+        f"- v2 wear diagnostics: {wear_text}",
         f"- 最大仓位: {cfg.active_max_positions}",
         f"- 第二仓: {'enabled' if cfg.enable_second_position else 'disabled'}",
         f"- 组合保证金硬上限: {cfg.portfolio_margin_cap_pct:.0%}",
@@ -222,6 +241,12 @@ def daily_brief() -> str:
         f"- {attr_overview}",
         f"## Lane贡献",
         f"- {lane_contrib}",
+
+        f"## v2 Mode/Lane PnL",
+        f"- {mode_pnl_text}",
+        f"## v2 Counterfactuals",
+        f"- {cf_text}",
+
         f"## Near-miss质量",
         f"- {near_miss_text}",
         f"## 退出归因",
@@ -241,7 +266,9 @@ def daily_brief() -> str:
     text += [
         f"- 近100条被阻断/暂停决策: {len(blocked)} 条",
         "",
-        "简要结论：v1.4.2 归因增强版，保留v1.4.1全部交易行为，新增冷路径归因层可回答：各lane真实费后贡献、near-miss盈亏质量、Guardian退出规则效果、未知归因占比。v1.4.1/1.4.0 已加入车道归因、反馈式near-miss冷却、同向相关仓位Governor和Guardian原因冷却。",
+
+        "简要结论：v2.0.0 已接入完整regime-adaptive foundation；CHOP默认等待/高质量range限定，TRANSITION probe-only，TREND normal需二次确认，wear/drawdown只能降风险。",
+
     ]
     out = "\n".join(text) + "\n"
     p = REPORT_DIR / "daily" / f"{day}.md"

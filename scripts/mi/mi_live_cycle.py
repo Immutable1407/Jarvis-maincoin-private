@@ -21,6 +21,13 @@ from jarvis_mi.portfolio import portfolio_allows_entry
 from jarvis_mi.snapshot import save_snapshot
 from jarvis_mi.indicators import atr
 from jarvis_mi.sizing import compute_size
+from jarvis_mi.market_structure import MarketStructureClassifier
+from jarvis_mi.trend_wear import TrendWearGovernor
+from jarvis_mi.mode_router import ModeRouter, WAIT_MODE
+from jarvis_mi.confirmation import SecondConfirmationGate
+from jarvis_mi.range_engine import LimitedRangeSurviveEngine
+from jarvis_mi.risk_ladder_v2 import RiskLadderV2
+from jarvis_mi.counterfactual import CounterfactualEvaluator
 
 
 def lane_profit_gate(selected, risk_decision, preview_size, equity, cfg, resonance_adjustment: float = 0.0, now_ts: float | None = None) -> tuple[bool, dict]:
@@ -114,6 +121,25 @@ def run_live_cycle() -> dict:
     )
     resonance = compute_resonance(h1_by_inst)
 
+    # v2.0.0 regime-adaptive foundation. Pure-Python only; fail closed to WAIT.
+    v2_error = None
+    try:
+        structure = MarketStructureClassifier().classify(h1_by_inst, market_state=market_state, resonance=resonance)
+        wear = TrendWearGovernor().evaluate()
+        mode = ModeRouter().route(structure, wear=wear, drawdown_pct=0.0)
+    except Exception as exc:
+        v2_error = f"{type(exc).__name__}: {exc}"
+        structure = MarketStructureClassifier().classify({}, market_state=None, resonance=None)
+        wear = TrendWearGovernor().evaluate()
+        mode = WAIT_MODE
+    v2_context = {
+        "structure": structure.to_dict(),
+        "trend_wear": wear.to_dict(),
+        "mode": mode.to_dict(),
+        "v2_error": v2_error,
+    }
+    counterfactuals = CounterfactualEvaluator()
+
     base_snapshot = {
         "account": acct,
         "equity": equity,
@@ -121,6 +147,7 @@ def run_live_cycle() -> dict:
         "btc_bias": btc_bias,
         "market_state": market_state.to_dict(),
         "resonance": resonance.to_dict(),
+        "v2": v2_context,
     }
 
     if len(positions) >= cfg.active_max_positions:
@@ -130,6 +157,16 @@ def run_live_cycle() -> dict:
         return rec
     if market_state.direction_bias == "no_trade" or market_state.risk_budget == "zero":
         rec = {"event": "NO_TRADE", "reason": "market_state_blocks_new_entries", **base_snapshot}
+        rec["snapshot"] = save_snapshot({**base_snapshot, "decision": rec})
+        append_jsonl("decisions.jsonl", rec)
+        return rec
+    if mode.mode == "WAIT":
+        rec = {"event": "NO_TRADE", "reason": "v2_mode_wait_blocks_new_entries", **base_snapshot}
+        rec["snapshot"] = save_snapshot({**base_snapshot, "decision": rec})
+        append_jsonl("decisions.jsonl", rec)
+        return rec
+    if len(positions) >= int(getattr(mode, "allow_second_position", False) and cfg.active_max_positions or 1):
+        rec = {"event": "NO_TRADE", "reason": "v2_mode_position_cap_reached", **base_snapshot}
         rec["snapshot"] = save_snapshot({**base_snapshot, "decision": rec})
         append_jsonl("decisions.jsonl", rec)
         return rec
@@ -156,11 +193,33 @@ def run_live_cycle() -> dict:
 
     rejected_candidates = []
     for selected in candidates:
+        lane = getattr(selected, "strategy_lane", "trend_confirmed") or "trend_confirmed"
+        confirmation = SecondConfirmationGate().evaluate(selected, structure, m15_by_inst.get(selected.inst_id), resonance=resonance)
+        range_decision = None
+        if lane == "trend_confirmed" and not (mode.allow_trend_confirmed_normal and confirmation.allow_normal):
+            detail = {"reason": "v2_confirmation_or_mode_block", "selected": selected.__dict__, "confirmation": confirmation.to_dict(), "mode": mode.to_dict(), "structure": structure.to_dict()}
+            counterfactuals.record_blocked(selected, "v2_confirmation_or_mode_block", mode=mode, structure=structure, details=detail)
+            rejected_candidates.append(detail)
+            continue
+        if lane == "trend_probe" and not mode.allow_trend_probe:
+            detail = {"reason": "v2_mode_blocks_trend_probe", "selected": selected.__dict__, "mode": mode.to_dict(), "structure": structure.to_dict()}
+            counterfactuals.record_blocked(selected, "v2_mode_blocks_trend_probe", mode=mode, structure=structure, details=detail)
+            rejected_candidates.append(detail)
+            continue
+        if lane == "range_swing":
+            crash_or_squeeze = "crash" in " ".join(market_state.reason_codes).lower() or "squeeze" in " ".join(market_state.reason_codes).lower()
+            range_decision = LimitedRangeSurviveEngine().evaluate(selected, structure, m15_by_inst.get(selected.inst_id), fee_rate=float(cfg.taker_fee_rate), crash_or_squeeze=crash_or_squeeze)
+            if not (mode.allow_range_swing and range_decision.allow):
+                detail = {"reason": "v2_range_engine_block", "selected": selected.__dict__, "range_decision": range_decision.to_dict(), "mode": mode.to_dict(), "structure": structure.to_dict()}
+                counterfactuals.record_blocked(selected, "v2_range_engine_block", mode=mode, structure=structure, details=detail)
+                rejected_candidates.append(detail)
+                continue
+
         ok, portfolio_reasons = portfolio_allows_entry(
             positions,
             selected,
             cfg.active_max_positions,
-            cfg.enable_second_position,
+            bool(cfg.enable_second_position and mode.allow_second_position),
             allow_mixed_direction_portfolio=cfg.allow_mixed_direction_portfolio,
         )
         if not ok:
@@ -174,7 +233,7 @@ def run_live_cycle() -> dict:
 
         m15 = m15_by_inst[selected.inst_id]
         vol_pct = (atr(m15, 14)[-1] / selected.entry_ref) if selected.entry_ref and len(m15) >= 20 else 0.0
-        risk_decision = decide_risk(market_state, selected.score, vol_pct, equity, recent_stopouts=0, resonance_risk_multiplier=resonance.risk_multiplier, strategy_lane=getattr(selected, "strategy_lane", "trend_confirmed"))
+        risk_decision = RiskLadderV2().decide(mode, lane, second_confirmation=confirmation.allow_normal, drawdown_pct=0.0, wear_level=wear.wear_level)
         if risk_decision.risk_mode == "paused":
             rec = {"event": "NO_TRADE", "reason": "risk_engine_paused", "selected": selected.__dict__, "risk_decision": risk_decision.to_dict(), **base_snapshot}
             rec["snapshot"] = save_snapshot({**base_snapshot, "signals": [s.__dict__ for s in signals], "decision": rec})
@@ -212,6 +271,9 @@ def run_live_cycle() -> dict:
             setattr(selected, attr, profit_preview.get(attr))
         trade = execute_entry(client, cfg, instruments[selected.inst_id], selected, equity, risk_decision=risk_decision, positions=positions)
         rec = {"event": "TRADE_ATTEMPTED", "selected": selected.__dict__, "risk_decision": risk_decision.to_dict(), "profit_preview": profit_preview, "trade": trade, **base_snapshot}
+        rec["v2_confirmation"] = confirmation.to_dict()
+        if range_decision:
+            rec["v2_range_decision"] = range_decision.to_dict()
         rec["snapshot"] = save_snapshot({**base_snapshot, "signals": [s.__dict__ for s in signals], "decision": rec})
         append_jsonl("decisions.jsonl", rec)
         return rec
