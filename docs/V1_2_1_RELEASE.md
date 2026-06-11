@@ -4,7 +4,7 @@ Date: 2026-05-29
 
 ## Scope
 
-Patch release after today's Hermes Mi daily brief showed stale v1.1.0 wording while the live strategy tag was already v1.2.0 three-lane percent engine.
+Patch release after the 2026-05-29 Hermes Mi daily brief showed stale v1.1.0 wording while the live strategy tag was already v1.2.0 three-lane percent engine.
 
 ## Fixes
 

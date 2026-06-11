@@ -18,7 +18,7 @@ v1.4.1 is a patch over v1.4.0 lane attribution + correlated short governor. It d
    - If the stop fails after entry, the system raises a loud error containing the entry order id, so the local guardian/health path can catch the unprotected position rather than silently recording a normal entry.
 
 3. **Daily report PnL semantics**
-   - Daily brief now reports **today’s** BJT deduped realized net after fees separately from all-time cumulative realized net.
+   - Daily brief now reports the current BJT-day deduped realized net after fees separately from all-time cumulative realized net.
    - This fixes the stale wording where a daily report could show cumulative fill PnL as if it were day-only PnL.
 
 ## Verification
