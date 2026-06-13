@@ -18,7 +18,7 @@ class PerformanceReportTests(unittest.TestCase):
         with mock.patch.dict(os.environ, env, clear=False):
             text = daily_brief()
 
-        self.assertIn("v2.0.0-regime-adaptive-maincoin-foundation", text)
+        self.assertIn("v2.0.1-entry-stop-observability-and-close-quantization", text)
 
         self.assertIn("trend_confirmed / trend_probe / range_swing", text)
         self.assertIn("v2当前regime/mode", text)

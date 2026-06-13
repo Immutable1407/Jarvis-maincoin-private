@@ -30,6 +30,14 @@ class TestExecution(unittest.TestCase):
         self.assertEqual(c.orders[0][2], '0.61')
         self.assertEqual(c.orders[0][3], 'short')
 
+    def test_reduce_only_close_formats_lot_size(self):
+        from jarvis_mi.execution import reduce_only_close
+        c=DummyClient(); p={'instId':'ETH-USDT-SWAP','pos':'1.234','posSide':'short'}
+        rec = reduce_only_close(c, Cfg, p, 'full_close', lot_sz='0.01', min_sz='0.01')
+        self.assertEqual(rec['event'], 'REDUCE_ONLY_PARTIAL')
+        self.assertEqual(c.orders[0][2], '1.23')
+        self.assertEqual(c.orders[0][3], 'short')
+
     def test_place_stop_algo_uses_okx_stop_loss_fields(self):
         class CaptureClient(OKXMiClient):
             def __init__(self):
@@ -57,7 +65,7 @@ if __name__ == '__main__':
 
 class EntryFailClient(DummyClient):
     def __init__(self):
-        super().__init__(); self.stops=[]
+        super().__init__(); self.stops=[]; self.stop_fail=False
     def market_order(self, inst_id, side, sz, pos_side=None, reduce_only=False, cl_ord_id=None):
         self.orders.append((inst_id, side, sz, pos_side, reduce_only))
         return {'code':'0', 'data':[{}]}
@@ -83,3 +91,30 @@ def test_execute_entry_rejects_order_missing_ordid_before_stop():
     else:
         raise AssertionError('expected RuntimeError')
     assert c.stops == []
+
+
+class EntryStopFailClient(EntryFailClient):
+    def market_order(self, inst_id, side, sz, pos_side=None, reduce_only=False, cl_ord_id=None):
+        self.orders.append((inst_id, side, sz, pos_side, reduce_only))
+        return {'code':'0', 'data':[{'ordId':'ENTRY1'}]}
+    def place_stop_algo(self, *args, **kwargs):
+        self.stops.append(args); return {'code':'1', 'msg':'bad stop'}
+
+def test_execute_entry_records_critical_when_stop_fails_after_order(tmp_path, monkeypatch):
+    import jarvis_mi.ledger as ledger
+    monkeypatch.setattr(ledger, 'LEDGER_DIR', tmp_path)
+    import jarvis_mi.execution as execution
+    monkeypatch.setattr(execution, 'append_jsonl', ledger.append_jsonl)
+    c=EntryStopFailClient()
+    sig=SimpleNamespace(inst_id='ETH-USDT-SWAP', side='long', entry_ref=100.0, stop=98.0, score=80, reason=[])
+    inst={'ctVal':'1','lotSz':'0.01','minSz':'0.01','tickSz':'0.01'}
+    try:
+        execute_entry(c, EntryCfg, inst, sig, equity=100.0, positions=[])
+    except RuntimeError as e:
+        assert 'entry_stop_algo_failed_after_order:ENTRY1' in str(e)
+    else:
+        raise AssertionError('expected RuntimeError')
+    text=(tmp_path/'trades.jsonl').read_text()
+    assert 'ENTRY_ORDER_ACCEPTED_PENDING_STOP' in text
+    assert 'CRITICAL_ENTRY_STOP_FAILED_AFTER_ORDER' in text
+    assert 'ENTRY1' in text

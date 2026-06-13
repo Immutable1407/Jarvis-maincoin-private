@@ -9,10 +9,10 @@
 - Runtime data under `data/` and reports under `reports/` are not committed.
 - LLMs do not enter the hot path. Strategy loops are pure Python.
 
-## v2.0.0 current state
+## v2.0.1 current state
 
-- **v2.0.0 is the current live version** — regime-adaptive maincoin foundation replacing the v1.x trend-confirmed-first hot path.
-- Strategy tag: `mi_v2_0_0_regime_adaptive_maincoin`.
+- **v2.0.1 is the current live patch** — entry-stop observability and reduce-only close quantization readiness over the v2.0.0 regime-adaptive maincoin foundation.
+- Strategy tag: `mi_v2_0_1_regime_adaptive_maincoin`.
 - Hot path: `MarketStructureClassifier -> TrendWearGovernor -> ModeRouter -> SecondConfirmationGate / LimitedRangeSurviveEngine -> RiskLadderV2 -> existing portfolio/profit/correlation/execution guards`.
 - TREND normal risk requires second confirmation; TRANSITION is probe-only; CHOP defaults to WAIT unless range quality/boundary/fee gates pass; WAIT disables new entries.
 - Trend wear and drawdown logic can only reduce risk or block entries; classifier/router errors fail closed to WAIT.
@@ -37,7 +37,8 @@
 
 ## Docs pointer
 
-- `docs/HERMES_MI_ARCHITECTURE.md` — current v2.0.0 architecture, data flow, gates, cron jobs.
+- `docs/HERMES_MI_ARCHITECTURE.md` — current v2.0.x architecture, data flow, gates, cron jobs.
+- `docs/V2_0_1_RELEASE.md` — v2.0.1 entry-stop observability and close quantization readiness patch.
 - `docs/V2_0_0_RELEASE.md` — v2.0.0 regime-adaptive foundation release notes.
 - `docs/V2_0_0_REGIME_ADAPTIVE_MAINCOIN_PLAN.md` — v2.0.0 plan and v2.1-v2.9 two-day iteration policy.
 - `docs/V1_4_3_RELEASE.md` — v1.4.3 OKX stop-algo schema hotfix notes.
@@ -62,11 +63,11 @@ python3 scripts/mi/mi_daily_review.py
 
 ## Cron jobs
 
-- `bc97ef299d9f` — Hermes Mi v2.0.0 regime-adaptive maincoin live cycle, every 15m, local, `jarvis_mi_live_cycle.sh`.
-- `dcb5a389e2d4` — Hermes Mi v2.0.0 maincoin guardian, every 5m, local, `jarvis_mi_guardian.sh`.
-- `4d7fbee50ff9` — Hermes Mi v2.0.0 maincoin healthcheck, every 120m, local, `jarvis_mi_healthcheck.sh`.
-- `aded3c6554f3` — Hermes Mi v2.0.0 fill sync, every 10m, local, `jarvis_mi_sync_fills.sh`.
-- `65b8d9feb0b3` — Hermes Mi v2.0.0 daily maincoin brief, 21:00 UTC+8, delivered to Feishu, `jarvis_mi_daily_review.sh`.
+- `bc97ef299d9f` — Hermes Mi v2.0.1 regime-adaptive maincoin live cycle, every 15m, local, `jarvis_mi_live_cycle.sh`.
+- `dcb5a389e2d4` — Hermes Mi v2.0.1 maincoin guardian, every 5m, local, `jarvis_mi_guardian.sh`.
+- `4d7fbee50ff9` — Hermes Mi v2.0.1 maincoin healthcheck, every 120m, local, `jarvis_mi_healthcheck.sh`.
+- `aded3c6554f3` — Hermes Mi v2.0.1 fill sync, every 10m, local, `jarvis_mi_sync_fills.sh`.
+- `65b8d9feb0b3` — Hermes Mi v2.0.1 daily maincoin brief, 21:00 UTC+8, delivered to Feishu, `jarvis_mi_daily_review.sh`.
 - `f65da2f01c13` — combined maincoin+altcoin weekly summary, Sunday 22:00 UTC+8, delivered to Feishu; Hermes cron job, not a project script.
 
 Feishu notification policy is summary-only: BTC-AHR999 DCA, Jarvis v4 daily recap, Hermes Mi daily brief, and Sunday combined weekly summary. Hermes Mi live-cycle/guardian/health/fill-sync jobs stay local.

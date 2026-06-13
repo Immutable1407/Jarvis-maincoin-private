@@ -27,7 +27,7 @@ class TestV11DynamicTwoSlot(unittest.TestCase):
             allowed_insts=("BTC-USDT-SWAP", "ETH-USDT-SWAP", "SOL-USDT-SWAP", "BNB-USDT-SWAP"),
         )
 
-        self.assertEqual(cfg.strategy_tag, "mi_v2_0_0_regime_adaptive_maincoin")
+        self.assertEqual(cfg.strategy_tag, "mi_v2_0_1_regime_adaptive_maincoin")
 
         self.assertGreater(cfg.min_expected_net_profit_pct, cfg.altcoin_profit_baseline_pct)
         self.assertIsNotNone(cfg.lane_min_expected_net_profit_pct)
