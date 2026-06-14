@@ -4,9 +4,13 @@
 
 ## 当前董事会存档版本
 
-- 当前版本：`v1.4.3-stop-algo-schema-hotfix`
-- 策略标签：`mi_v1_4_3_stop_algo_schema_hotfix`
-- 性质：归因增强版本；不改变交易阈值、仓位、杠杆、风控或 Guardian 行为。
+- 实验状态（2026-06-14）：**进入收尾归档期**。Hermes Mi 已完成主流币独立策略从三车道百分比利润、lane 归因，到 v2.0.x regime-adaptive foundation 的实验使命；后续不再作为主要优化方向。实盘 cron 可继续小资金运行 1–2 天作为 Unified Jarvis 的对照组，但新增策略研发重心转向 `/root/jarvis-unified`。
+- 收尾结论：Mi 证明主流币策略不能只做“少币种山寨系统”，必须有结构分类、趋势磨损、二次确认、range survive、相关性和退出归因；这些模块将作为 Unified 的 maincoin sleeve 参考。
+- 归档用途：保留 BTC/ETH/SOL/BNB 主流币结构-first 交易框架、TrendWearGovernor、ModeRouter、RiskLadderV2、lane/exit attribution 等实现。
+
+- 当前版本：`v2.0.2-trend-wear-exit-loss-only`
+- 策略标签：`mi_v2_0_2_regime_adaptive_maincoin`
+- 性质：v2.0.x regime-adaptive foundation 上的 bugfix；修复 TrendWearGovernor 将 entry fee 当 trend loss 的污染，不改变交易阈值、仓位、杠杆或风险预算。
 - 标的范围：`BTC-USDT-SWAP`、`ETH-USDT-SWAP`、`SOL-USDT-SWAP`、`BNB-USDT-SWAP`
 - 账户边界：专用 OKX 子账户 UID `845800098641991226`，只读取 `HERMES_MI_OKX_*` 凭证。
 - 热路径：纯 Python 确定性执行；LLM 不进入下单/止损/守护链路。
@@ -15,13 +19,17 @@
 
 Hermes Mi 是主流币趋势/共振策略，核心不是高频扫全市场，而是在 BTC、ETH、SOL、BNB 四个高流动性主流币之间寻找质量足够高的趋势机会。
 
-- 市场状态：用 1h 级别判断风险环境、趋势方向和波动状态。
-- 入场车道：三条 lane：`trend_confirmed`、`trend_probe`、`range_swing`。
+- 市场结构：v2.0.x 使用 `MarketStructureClassifier` 识别 trend / transition / chop / wait。
+- Trend wear：只根据 closed-trade / exit loss、no-MFE、stopout 等真实磨损降风险；entry fee-only fills 不得污染 `trend_loss_count_*`。
+- 模式路由：`ModeRouter` 决定 TREND / TRANSITION / CHOP / WAIT；WAIT 禁止新开仓。
+- 二次确认：TREND normal risk 需要 SecondConfirmationGate；TRANSITION 只允许 probe。
+- Range survive：CHOP 默认 WAIT，只有质量、边界、费用条件达标才允许 range_swing。
+- 入场车道：`trend_confirmed`、`trend_probe`、`range_swing`。
 - 共振评分：比较 BTC/ETH/SOL/BNB 的同向、分化和强弱关系。
 - 利润门槛：按权益百分比和 lane 动态设定，不用固定 USDT 小目标。
 - 仓位约束：默认最多 2 个活动仓位；组合保证金硬上限 60%；禁止默认多空混合组合。
 - Guardian：本地硬止损、保本、部分止盈、移动止损；止损状态单调，不允许越守越松。
-- 归因层：v1.4.2 将成交、lane、near-miss、退出原因和日结报告关联，方便 GPT-5.5/Sir 做后续策略审查。
+- 归因层：成交、lane、near-miss、退出原因和日结报告关联，方便 GPT-5.5/Sir 做后续策略审查。
 
 ## 历史版本变迁
 
@@ -34,6 +42,9 @@ Hermes Mi 是主流币趋势/共振策略，核心不是高频扫全市场，而
 - `v1.4.1`：entry/report fail-loud 热修复；OKX entry ordId/止损响应校验、BJT 日级 PnL。
 - `v1.4.2`：归因增强；新增 attribution 模块、只读审计脚本、增强日结归因，不改变交易行为。
 - `v1.4.3`：OKX stop-algo schema 热修复；入场后独立止损 algo 使用 `slTriggerPx/slOrdPx/slTriggerPxType`，避免 OKX 50015。
+- `v2.0.0`：regime-adaptive foundation；引入市场结构分类、trend-wear、模式路由、二次确认、range-survive、RiskLadderV2。
+- `v2.0.1`：entry-stop observability + reduce-only close quantization readiness。
+- `v2.0.2`：TrendWearGovernor exit-loss-only bugfix；entry fee-only fills 不再触发 trend wear。
 
 ## 仓库结构
 
@@ -51,6 +62,9 @@ cd /root/jarvis-mi
 export PYTHONPATH=/root/jarvis-mi
 python3 -m compileall -q jarvis_mi scripts/mi tests/mi
 python3 -m unittest discover -s tests/mi -v
+python3 -m pytest -q tests/mi -o 'addopts='
+python3 scripts/mi/mi_healthcheck.py
+python3 scripts/mi/mi_sync_fills.py
 python3 scripts/mi/mi_attribution_audit.py
 ```
 
