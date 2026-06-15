@@ -9,15 +9,15 @@
 - Runtime data under `data/` and reports under `reports/` are not committed.
 - LLMs do not enter the hot path. Strategy loops are pure Python.
 
-## v2.0.1 current state
+## v2.0.2 current state
 
-- **v2.0.1 is the current live patch** — entry-stop observability and reduce-only close quantization readiness over the v2.0.0 regime-adaptive maincoin foundation.
-- Strategy tag: `mi_v2_0_1_regime_adaptive_maincoin`.
+- **v2.0.2 is the current live patch** — TrendWearGovernor exit-loss-only bugfix over v2.0.1 entry-stop observability and reduce-only close quantization readiness.
+- Strategy tag: `mi_v2_0_2_regime_adaptive_maincoin`.
 - Hot path: `MarketStructureClassifier -> TrendWearGovernor -> ModeRouter -> SecondConfirmationGate / LimitedRangeSurviveEngine -> RiskLadderV2 -> existing portfolio/profit/correlation/execution guards`.
 - TREND normal risk requires second confirmation; TRANSITION is probe-only; CHOP defaults to WAIT unless range quality/boundary/fee gates pass; WAIT disables new entries.
 - Trend wear and drawdown logic can only reduce risk or block entries; classifier/router errors fail closed to WAIT.
 - v1.4.2/v1.4.3 attribution and OKX stop-algo schema fixes are retained.
-- Current first live v2 observation: classifier may label trend, but accumulated wear can demote mode to WAIT and block new entries.
+- Trend wear counts trend losses from closed-trade/exit fills only; entry fee-only fills must not pollute `trend_loss_count_*` or demote mode to WAIT.
 
 ## Important historical live gates
 
@@ -38,6 +38,7 @@
 ## Docs pointer
 
 - `docs/HERMES_MI_ARCHITECTURE.md` — current v2.0.x architecture, data flow, gates, cron jobs.
+- `docs/V2_0_2_RELEASE.md` — v2.0.2 TrendWearGovernor exit-loss-only bugfix.
 - `docs/V2_0_1_RELEASE.md` — v2.0.1 entry-stop observability and close quantization readiness patch.
 - `docs/V2_0_0_RELEASE.md` — v2.0.0 regime-adaptive foundation release notes.
 - `docs/V2_0_0_REGIME_ADAPTIVE_MAINCOIN_PLAN.md` — v2.0.0 plan and v2.1-v2.9 two-day iteration policy.
@@ -63,11 +64,11 @@ python3 scripts/mi/mi_daily_review.py
 
 ## Cron jobs
 
-- `bc97ef299d9f` — Hermes Mi v2.0.1 regime-adaptive maincoin live cycle, every 15m, local, `jarvis_mi_live_cycle.sh`.
-- `dcb5a389e2d4` — Hermes Mi v2.0.1 maincoin guardian, every 5m, local, `jarvis_mi_guardian.sh`.
-- `4d7fbee50ff9` — Hermes Mi v2.0.1 maincoin healthcheck, every 120m, local, `jarvis_mi_healthcheck.sh`.
-- `aded3c6554f3` — Hermes Mi v2.0.1 fill sync, every 10m, local, `jarvis_mi_sync_fills.sh`.
-- `65b8d9feb0b3` — Hermes Mi v2.0.1 daily maincoin brief, 21:00 UTC+8, delivered to Feishu, `jarvis_mi_daily_review.sh`.
+- `bc97ef299d9f` — Hermes Mi v2.0.2 regime-adaptive maincoin live cycle, every 15m, local, `jarvis_mi_live_cycle.sh`.
+- `dcb5a389e2d4` — Hermes Mi v2.0.2 maincoin guardian, every 5m, local, `jarvis_mi_guardian.sh`.
+- `4d7fbee50ff9` — Hermes Mi v2.0.2 maincoin healthcheck, every 120m, local, `jarvis_mi_healthcheck.sh`.
+- `aded3c6554f3` — Hermes Mi v2.0.2 fill sync, every 10m, local, `jarvis_mi_sync_fills.sh`.
+- `65b8d9feb0b3` — Hermes Mi v2.0.2 daily maincoin brief, 21:00 UTC+8, delivered to Feishu, `jarvis_mi_daily_review.sh`.
 - `f65da2f01c13` — combined maincoin+altcoin weekly summary, Sunday 22:00 UTC+8, delivered to Feishu; Hermes cron job, not a project script.
 
 Feishu notification policy is summary-only: BTC-AHR999 DCA, Jarvis v4 daily recap, Hermes Mi daily brief, and Sunday combined weekly summary. Hermes Mi live-cycle/guardian/health/fill-sync jobs stay local.

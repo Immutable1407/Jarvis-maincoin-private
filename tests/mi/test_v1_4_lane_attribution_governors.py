@@ -52,8 +52,8 @@ def _cfg(**kwargs):
 
 def test_v14_version_and_strategy_tag_defaults():
     cfg = _cfg()
-    assert cfg.system_version == "v1.4.1-entry-report-fail-loud-hotfix"
-    assert cfg.strategy_tag == "mi_v1_4_1_entry_report_fail_loud_hotfix"
+    assert cfg.system_version == "v2.0.2-trend-wear-exit-loss-only"
+    assert cfg.strategy_tag == "mi_v2_0_2_regime_adaptive_maincoin"
 
 
 def test_v14_lane_profit_preview_carries_attribution_and_feedback_blocks_near_miss():

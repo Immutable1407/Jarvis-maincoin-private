@@ -1,3 +1,5 @@
+> **Archive notice (2026-06-15):** Hermes Mi is now a closed historical experiment. Active development/trading moved to Matrix Account / Unified Jarvis v1.0.0. See `docs/EXPERIMENT_CLOSEOUT_20260615.md`.
+
 # Jarvis 主流币策略（Hermes Mi）
 
 这是 Sir 的 OKX 主流币永续合约策略私人归档仓库，对应 VPS 实盘目录 `/root/jarvis-mi`。仓库只保存代码、测试、中文说明和非敏感文档；不保存 API key、Webhook、账户余额、持仓、成交流水、日报或运行时状态。

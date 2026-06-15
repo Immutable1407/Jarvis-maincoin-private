@@ -1,9 +1,9 @@
 
-# Hermes Mi v2.0.0 Maincoin Strategy Architecture
+# Hermes Mi v2.0.x Maincoin Strategy Architecture
 
-## Purpose
+## Scope
 
-Hermes Mi is a dedicated OKX maincoin perpetual strategy isolated from BTC-AHR999 and Jarvis v4 altcoin trading. v2.0.0 is the regime-adaptive maincoin foundation: deterministic market structure classification, trend-wear governance, mode routing, second confirmation, range-survive gating, and mode-specific RiskLadderV2 are in the hot path before the existing portfolio/profit/correlation/execution guards.
+Hermes Mi is a dedicated OKX maincoin perpetual strategy isolated from BTC-AHR999 and Jarvis v4 altcoin trading. v2.0.x is the regime-adaptive maincoin foundation: deterministic market structure classification, trend-wear governance, mode routing, second confirmation, range-survive gating, and mode-specific RiskLadderV2 are in the hot path before the existing portfolio/profit/correlation/execution guards. Current live patch is v2.0.2, which keeps v2.0.0 behavior but fixes TrendWearGovernor to count trend losses from exit / closed-trade fills only.
 
 
 ## Account and instrument boundaries
@@ -160,7 +160,7 @@ python3 scripts/mi/mi_daily_review.py
 - Private repo: `Immutable1407/Jarvis-maincoin-private`
 - Remote: `git@github.com-jarvis:Immutable1407/Jarvis-maincoin-private.git`
 
-- Release tag: `v2.0.0-regime-adaptive-maincoin-foundation`
+- Release tag: `v2.0.2-trend-wear-exit-loss-only`
 
 
 Before pushing, scan staged files for secrets and confirm no `/data/`, `/reports/`, `.env*`, `.jsonl`, account snapshots, fills, or ledgers are committed.

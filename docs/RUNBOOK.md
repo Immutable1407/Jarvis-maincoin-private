@@ -27,7 +27,7 @@ hermes cron list --all
 Relevant jobs:
 
 
-- `bc97ef299d9f` — v2.0.0 regime-adaptive live cycle, every 15m, local.
+- `bc97ef299d9f` — v2.0.2 regime-adaptive live cycle, every 15m, local.
 
 - `dcb5a389e2d4` — guardian, every 5m, local.
 - `4d7fbee50ff9` — healthcheck, every 120m, local.
@@ -80,7 +80,7 @@ python3 scripts/mi/mi_daily_review.py
 ```
 
 
-`python3 scripts/mi/mi_live_cycle.py` can place a live order if a v2.0.0 regime/mode gate, second confirmation or range-survive gate, RiskLadderV2, portfolio, guardian-cooldown, dynamic percent-profit, feedback near-miss, and correlated same-direction governor all pass. Do not use it for read-only verification.
+`python3 scripts/mi/mi_live_cycle.py` can place a live order if the current v2.0.2 regime/mode gate, second confirmation or range-survive gate, RiskLadderV2, portfolio, guardian-cooldown, dynamic percent-profit, feedback near-miss, trend-wear exit-loss-only logic, and correlated same-direction governor all pass. Do not use it for read-only verification.
 
 ## Attribution audit and v2 counterfactuals
 

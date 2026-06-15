@@ -9,6 +9,76 @@ from typing import Any
 from .config_mi import LEDGER_DIR, STATE_DIR
 
 
+def _floatish(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(value or default)
+    except Exception:
+        return default
+
+
+def _fill_position_side(row: dict, role: str) -> str | None:
+    """Return the position side represented by a fill row when knowable.
+
+    OKX hedge-mode fills have both order `side` (buy/sell) and `posSide`
+    (long/short).  `posSide` is authoritative.  If it is missing, only infer
+    from buy/sell when the lifecycle role is known; exit orders invert the
+    order side, while entries follow it.  Some older synthetic rows used
+    `side=long|short`, so preserve that as a direct position-side fallback.
+    """
+    pos_side = str(row.get("posSide") or row.get("pos_side") or "").lower()
+    if pos_side in {"long", "short"}:
+        return pos_side
+
+    side = str(row.get("side") or "").lower()
+    if side in {"long", "short"}:
+        return side
+    if role == "exit":
+        if side == "sell":
+            return "long"
+        if side == "buy":
+            return "short"
+    if role == "entry":
+        if side == "buy":
+            return "long"
+        if side == "sell":
+            return "short"
+    return None
+
+
+def _trend_fill_loss(row: dict, side: str | None = None) -> bool:
+    """True only for trend_confirmed closed-trade/exit loss fills.
+
+    v2.0.1 counted entry rows with fillPnl=0 plus a negative fee as losses,
+    which polluted TrendWearGovernor state.  v2.0.2 counts explicit exit fills
+    (fill_role/order_role=exit), still supports legacy role-less rows with a
+    non-zero realized PnL, and ignores fee-only rows.
+    """
+    lane = row.get("strategy_lane") or ""
+    if lane != "trend_confirmed":
+        return False
+
+    fill_role = str(row.get("fill_role") or "").lower()
+    order_role = str(row.get("order_role") or "").lower()
+    role = "exit" if "exit" in {fill_role, order_role} else ("entry" if "entry" in {fill_role, order_role} else "")
+    if role == "entry":
+        return False
+
+    if side:
+        row_side = _fill_position_side(row, role)
+        if row_side is not None and row_side != side:
+            return False
+
+    fill_pnl = _floatish(row.get("pnl") or row.get("realizedPnl") or row.get("fillPnl") or 0)
+    fee = _floatish(row.get("fee") or 0)
+
+    # Role-less legacy rows may include fees on entry fills.  Do not treat a
+    # zero-realized-PnL fee as a closed-trade loss.
+    if not role and abs(fill_pnl) < 1e-12:
+        return False
+
+    return (fill_pnl + fee) < 0
+
+
 @dataclass(frozen=True)
 class TrendWearState:
     wear_level: int
@@ -81,15 +151,7 @@ class TrendWearGovernor:
             for row in fills[-200:]:
                 if inst_id and row.get("instId") not in (None, inst_id):
                     continue
-                if side and row.get("posSide") not in (None, side):
-                    continue
-                lane = row.get("strategy_lane") or ""
-                pnl = 0.0
-                try:
-                    pnl = float(row.get("pnl") or row.get("realizedPnl") or row.get("fillPnl") or 0) + float(row.get("fee") or 0)
-                except Exception:
-                    pnl = 0.0
-                if lane == "trend_confirmed" and pnl < 0:
+                if _trend_fill_loss(row, side):
                     losses += 1
 
             cooldown_until = None

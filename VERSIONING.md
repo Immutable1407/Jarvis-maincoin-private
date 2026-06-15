@@ -8,8 +8,9 @@ Hermes Mi 主流币策略使用语义化版本：`MAJOR.MINOR.PATCH`。
 
 ## 当前版本
 
-- `v1.4.3` — stop-algo schema hotfix（2026-06-08）：OKX entry 后独立止损 algo 改用 `slTriggerPx/slOrdPx/slTriggerPxType`，修复 OKX 50015；不改变交易阈值、仓位、杠杆或 Guardian 行为。
-- `v1.4.2` — attribution enhancement（2026-06-08）：新增冷路径归因层、只读 attribution audit、日报归因板块；不改变交易阈值、仓位、杠杆或 Guardian 行为。
+- `v2.0.2` — TrendWearGovernor exit-loss-only bugfix（2026-06-14）：trend wear 只统计 exit / closed-trade loss；entry fee-only fills 不再污染 `trend_loss_count_*` 或把系统错误推入 WAIT。不改变交易阈值、仓位、杠杆或风险预算。
+- `v2.0.1` — entry-stop observability + close quantization readiness：补 entry stop 可观测性和 reduce-only close 张数量化准备。
+- `v2.0.0` — regime-adaptive maincoin foundation：`MarketStructureClassifier -> TrendWearGovernor -> ModeRouter -> SecondConfirmationGate / LimitedRangeSurviveEngine -> RiskLadderV2` 成为主流币热路径基础。
 
 ## 历史版本
 
@@ -20,3 +21,5 @@ Hermes Mi 主流币策略使用语义化版本：`MAJOR.MINOR.PATCH`。
 - `v1.3.0` — 自适应 lane 利润引擎。
 - `v1.4.0` — lane 归因、near-miss 反馈冷却、相关性 governor。
 - `v1.4.1` — entry/report fail-loud hotfix：OKX entry ordId/stop 响应校验和 BJT 日级 PnL。
+- `v1.4.2` — attribution enhancement：新增冷路径归因层、只读 attribution audit、日报归因板块；不改变交易阈值、仓位、杠杆或 Guardian 行为。
+- `v1.4.3` — stop-algo schema hotfix：OKX entry 后独立止损 algo 改用 `slTriggerPx/slOrdPx/slTriggerPxType`，修复 OKX 50015；不改变交易阈值、仓位、杠杆或 Guardian 行为。
