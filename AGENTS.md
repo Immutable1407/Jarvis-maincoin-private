@@ -9,15 +9,14 @@
 - Runtime data under `data/` and reports under `reports/` are not committed.
 - LLMs do not enter the hot path. Strategy loops are pure Python.
 
-## v2.0.2 current state
+## Archive state
 
-- **v2.0.2 is the current live patch** — TrendWearGovernor exit-loss-only bugfix over v2.0.1 entry-stop observability and reduce-only close quantization readiness.
-- Strategy tag: `mi_v2_0_2_regime_adaptive_maincoin`.
-- Hot path: `MarketStructureClassifier -> TrendWearGovernor -> ModeRouter -> SecondConfirmationGate / LimitedRangeSurviveEngine -> RiskLadderV2 -> existing portfolio/profit/correlation/execution guards`.
-- TREND normal risk requires second confirmation; TRANSITION is probe-only; CHOP defaults to WAIT unless range quality/boundary/fee gates pass; WAIT disables new entries.
-- Trend wear and drawdown logic can only reduce risk or block entries; classifier/router errors fail closed to WAIT.
-- v1.4.2/v1.4.3 attribution and OKX stop-algo schema fixes are retained.
-- Trend wear counts trend losses from closed-trade/exit fills only; entry fee-only fills must not pollute `trend_loss_count_*` or demote mode to WAIT.
+- **Archived experiment:** Hermes Mi maincoin strategy was formally closed on 2026-06-15 after Sir moved maincoin funds into Matrix Account / Unified Jarvis. Do not resume live crons unless Sir explicitly asks for historical rollback.
+- Final archive baseline: v2.0.2 TrendWearGovernor exit-loss-only bugfix over v2.0.1 entry-stop observability and reduce-only close quantization readiness.
+- Final account state at closeout: dedicated OKX maincoin subaccount had zero equity and zero open positions.
+- Runtime/private data was archived locally under `/root/jarvis-archives/`; it must not be committed.
+- Active trading work now belongs to `/root/jarvis-unified` and skill `jarvis-matrix-trading`.
+- Strategy tag at archive: `mi_v2_0_2_regime_adaptive_maincoin`.
 
 ## Important historical live gates
 
