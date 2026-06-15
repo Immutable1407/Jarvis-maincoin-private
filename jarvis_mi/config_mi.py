@@ -46,8 +46,8 @@ class MiConfig:
     min_expected_r: float = 1.5
     max_daily_realized_loss_pct: float = 0.10
 
-    system_version: str = "v2.0.0-regime-adaptive-maincoin-foundation"
-    strategy_tag: str = "mi_v2_0_0_regime_adaptive_maincoin"
+    system_version: str = "v2.0.2-trend-wear-exit-loss-only"
+    strategy_tag: str = "mi_v2_0_2_regime_adaptive_maincoin"
     enable_v2_regime_adaptive: bool = True
 
     # v1.2.0: percent-based profit baseline. Maincoin target slope should exceed

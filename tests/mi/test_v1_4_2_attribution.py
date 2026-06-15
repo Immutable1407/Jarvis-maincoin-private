@@ -37,8 +37,8 @@ class TestV142VersionMetadata(unittest.TestCase):
             expected_uid="u", expected_main_uid="m",
             allowed_insts=("BTC-USDT-SWAP", "ETH-USDT-SWAP", "SOL-USDT-SWAP", "BNB-USDT-SWAP"),
         )
-        self.assertIn("v2.0.0", cfg.system_version)
-        self.assertIn("mi_v2_0_0", cfg.strategy_tag)
+        self.assertIn("v2.0.2", cfg.system_version)
+        self.assertIn("mi_v2_0_2", cfg.strategy_tag)
         self.assertNotIn("v1.4.1", cfg.system_version)
 
     def test_trading_params_unchanged(self):
@@ -330,9 +330,9 @@ class TestV142DailyBrief(unittest.TestCase):
             from jarvis_mi.performance import daily_brief
             text = daily_brief()
 
-        # v2.0.0 version while preserving v1.4.2 attribution sections
-        self.assertIn("v2.0.0-regime-adaptive-maincoin-foundation", text)
-        self.assertIn("mi_v2_0_0_regime_adaptive_maincoin", text)
+        # v2.0.2 version while preserving v1.4.2 attribution sections
+        self.assertIn("v2.0.2-trend-wear-exit-loss-only", text)
+        self.assertIn("mi_v2_0_2_regime_adaptive_maincoin", text)
 
         # New v1.4.2 sections
         self.assertIn("归因总览", text)

@@ -81,10 +81,30 @@ def execute_entry(client: OKXMiClient, cfg: MiConfig, inst: dict, signal, equity
         order_id = str(order_data[0].get("ordId") or "")
     if not order_id:
         raise RuntimeError("entry_order_missing_ordid")
+    # Persist accepted entry immediately. If the follow-up stop algo fails, this
+    # creates an auditable orphan-entry record instead of leaving a real position
+    # invisible to fill attribution and postmortems.
+    pre_stop_rec = {
+        "event": "ENTRY_ORDER_ACCEPTED_PENDING_STOP",
+        "instId": signal.inst_id,
+        "direction": direction,
+        "leverage": leverage,
+        "sz": size.sz,
+        "entry_ref": signal.entry_ref,
+        "stop_px": format_price(signal.stop, inst["tickSz"]),
+        "score": signal.score,
+        "reason": signal.reason,
+        "strategy_lane": getattr(signal, "strategy_lane", None),
+        "order": order.get("data"),
+        "strategy_tag": cfg.strategy_tag,
+    }
+    append_jsonl("trades.jsonl", pre_stop_rec)
+
     # Place standalone reduce-only stop immediately; guardian also enforces local stop.
-    stop_px = format_price(signal.stop, inst["tickSz"])
+    stop_px = pre_stop_rec["stop_px"]
     stop = client.place_stop_algo(signal.inst_id, close_side_for(direction), size.sz, stop_px, pos_side=pos_side)
     if isinstance(stop, dict) and stop.get("code", "0") != "0":
+        append_jsonl("trades.jsonl", {**pre_stop_rec, "event": "CRITICAL_ENTRY_STOP_FAILED_AFTER_ORDER", "stop_error": stop})
         raise RuntimeError(f"entry_stop_algo_failed_after_order:{order_id}: {stop.get('msg') or stop}")
     rec = {
         "event": "ENTRY_SUBMITTED",
@@ -135,5 +155,5 @@ def reduce_only_fraction(client: OKXMiClient, cfg: MiConfig, pos: dict, fraction
     return rec
 
 
-def reduce_only_close(client: OKXMiClient, cfg: MiConfig, pos: dict, reason: str) -> dict:
-    return reduce_only_fraction(client, cfg, pos, 1.0, reason)
+def reduce_only_close(client: OKXMiClient, cfg: MiConfig, pos: dict, reason: str, lot_sz: str | None = None, min_sz: str | None = None) -> dict:
+    return reduce_only_fraction(client, cfg, pos, 1.0, reason, lot_sz=lot_sz, min_sz=min_sz)

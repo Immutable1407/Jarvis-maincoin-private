@@ -51,5 +51,5 @@ def test_seen_state_trims_oldest_not_lexicographic(tmp_path, monkeypatch):
 
 def test_package_version_matches_v1_4():
     import jarvis_mi
-    assert jarvis_mi.__version__ == "1.4.1"
+    assert jarvis_mi.__version__ == "2.0.2"
 
