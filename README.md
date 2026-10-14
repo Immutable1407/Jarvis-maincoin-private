@@ -1,77 +1,120 @@
-> **Archive notice (2026-06-15):** Hermes Mi is now a closed historical experiment. Active development/trading moved to Matrix Account / Unified Jarvis v1.0.0. See `docs/EXPERIMENT_CLOSEOUT_20260615.md`.
+# Hermes Mi｜主流币永续合约策略实验
 
-# Jarvis 主流币策略（Hermes Mi）
+Hermes Mi 是针对 BTC、ETH、SOL、BNB 构建的 OKX 永续合约交易系统。项目通过市场结构分类、趋势磨损反馈、模式路由、二次确认和组合约束，探索主流币趋势交易与有限区间交易的执行框架，并保留成交和退出归因能力。
 
-这是 Sir 的 OKX 主流币永续合约策略私人归档仓库，对应 VPS 实盘目录 `/root/jarvis-mi`。仓库只保存代码、测试、中文说明和非敏感文档；不保存 API key、Webhook、账户余额、持仓、成交流水、日报或运行时状态。
+**独立实验已于 2026-06-15 收尾。** 根据 [收尾记录](docs/EXPERIMENT_CLOSEOUT_20260615.md)，资金已迁入 [Matrix Account / Unified Jarvis](https://github.com/Immutable1407/Jarvis-unified-private)，原执行、Guardian、健康检查、成交同步和日报任务已暂停。本仓库作为源码与研究归档保留。
 
-## 当前董事会存档版本
+## 归档基线
 
-- 实验状态（2026-06-14）：**进入收尾归档期**。Hermes Mi 已完成主流币独立策略从三车道百分比利润、lane 归因，到 v2.0.x regime-adaptive foundation 的实验使命；后续不再作为主要优化方向。实盘 cron 可继续小资金运行 1–2 天作为 Unified Jarvis 的对照组，但新增策略研发重心转向 `/root/jarvis-unified`。
-- 收尾结论：Mi 证明主流币策略不能只做“少币种山寨系统”，必须有结构分类、趋势磨损、二次确认、range survive、相关性和退出归因；这些模块将作为 Unified 的 maincoin sleeve 参考。
-- 归档用途：保留 BTC/ETH/SOL/BNB 主流币结构-first 交易框架、TrendWearGovernor、ModeRouter、RiskLadderV2、lane/exit attribution 等实现。
+| 项目 | 值 |
+| --- | --- |
+| 代码版本 | `v2.0.2-trend-wear-exit-loss-only` |
+| 策略标签 | `mi_v2_0_2_regime_adaptive_maincoin` |
+| 标的 | `BTC-USDT-SWAP`、`ETH-USDT-SWAP`、`SOL-USDT-SWAP`、`BNB-USDT-SWAP` |
+| 原运行目录 | `/root/jarvis-mi` |
+| 凭证命名空间 | `HERMES_MI_OKX_*` |
+| 交易决策 | 确定性 Python；LLM 不进入实时执行链路 |
 
-- 当前版本：`v2.0.2-trend-wear-exit-loss-only`
-- 策略标签：`mi_v2_0_2_regime_adaptive_maincoin`
-- 性质：v2.0.x regime-adaptive foundation 上的 bugfix；修复 TrendWearGovernor 将 entry fee 当 trend loss 的污染，不改变交易阈值、仓位、杠杆或风险预算。
-- 标的范围：`BTC-USDT-SWAP`、`ETH-USDT-SWAP`、`SOL-USDT-SWAP`、`BNB-USDT-SWAP`
-- 账户边界：专用 OKX 子账户 UID `845800098641991226`，只读取 `HERMES_MI_OKX_*` 凭证。
-- 热路径：纯 Python 确定性执行；LLM 不进入下单/止损/守护链路。
+文档中的历史实盘状态和账户信息仅描述相应记录日期。归档包含实现与发布记录，不包含最新生产探针结果。
 
-## 策略逻辑摘要
+## 策略如何工作
 
-Hermes Mi 是主流币趋势/共振策略，核心不是高频扫全市场，而是在 BTC、ETH、SOL、BNB 四个高流动性主流币之间寻找质量足够高的趋势机会。
+```text
+账户隔离与标的白名单
+  → 四币种 1H / 15m 行情、BTC 方向与币种共振
+  → 市场结构分类与趋势磨损反馈
+  → TREND / TRANSITION / CHOP / WAIT 模式
+  → 信号车道、二次确认与区间质量检查
+  → RiskLadderV2、预期费后收益与组合约束
+  → 合约数量计算、入场与交易所止损
+  → Guardian、成交对账、退出归因和日报
+```
 
-- 市场结构：v2.0.x 使用 `MarketStructureClassifier` 识别 trend / transition / chop / wait。
-- Trend wear：只根据 closed-trade / exit loss、no-MFE、stopout 等真实磨损降风险；entry fee-only fills 不得污染 `trend_loss_count_*`。
-- 模式路由：`ModeRouter` 决定 TREND / TRANSITION / CHOP / WAIT；WAIT 禁止新开仓。
-- 二次确认：TREND normal risk 需要 SecondConfirmationGate；TRANSITION 只允许 probe。
-- Range survive：CHOP 默认 WAIT，只有质量、边界、费用条件达标才允许 range_swing。
-- 入场车道：`trend_confirmed`、`trend_probe`、`range_swing`。
-- 共振评分：比较 BTC/ETH/SOL/BNB 的同向、分化和强弱关系。
-- 利润门槛：按权益百分比和 lane 动态设定，不用固定 USDT 小目标。
-- 仓位约束：默认最多 2 个活动仓位；组合保证金硬上限 60%；禁止默认多空混合组合。
-- Guardian：本地硬止损、保本、部分止盈、移动止损；止损状态单调，不允许越守越松。
-- 归因层：成交、lane、near-miss、退出原因和日结报告关联，方便 GPT-5.5/Sir 做后续策略审查。
+市场模式决定哪些候选可以继续接受评估，而不是直接生成订单：
 
-## 历史版本变迁
+| 模式 | 行为 |
+| --- | --- |
+| `TREND` | 正式趋势风险需要二次确认；趋势磨损和回撤可以降低风险 |
+| `TRANSITION` | 只允许较小的试探仓位 |
+| `CHOP` | 默认等待，仅允许通过边界、质量和成本条件的区间机会 |
+| `WAIT` | 不开新仓 |
 
-- `v1.0.0`：主流币独立策略初始归档。
-- `v1.1.0`：两仓位/复利风控框架成型。
-- `v1.2.0`：三车道百分比利润引擎；从固定收益目标改为权益百分比门槛。
-- `v1.2.1`：日报版本与元数据一致性修补。
-- `v1.3.0`：自适应 lane 利润引擎，按市场状态和信号质量调整机会门槛。
-- `v1.4.0`：lane 归因、near-miss 反馈冷却、同向相关性 governor、Guardian 退出冷却。
-- `v1.4.1`：entry/report fail-loud 热修复；OKX entry ordId/止损响应校验、BJT 日级 PnL。
-- `v1.4.2`：归因增强；新增 attribution 模块、只读审计脚本、增强日结归因，不改变交易行为。
-- `v1.4.3`：OKX stop-algo schema 热修复；入场后独立止损 algo 使用 `slTriggerPx/slOrdPx/slTriggerPxType`，避免 OKX 50015。
-- `v2.0.0`：regime-adaptive foundation；引入市场结构分类、trend-wear、模式路由、二次确认、range-survive、RiskLadderV2。
-- `v2.0.1`：entry-stop observability + reduce-only close quantization readiness。
-- `v2.0.2`：TrendWearGovernor exit-loss-only bugfix；entry fee-only fills 不再触发 trend wear。
+候选分为 `trend_confirmed`、`trend_probe` 和 `range_swing` 三条车道。预期费后收益按账户权益百分比和车道评估，部分接近门槛的候选还必须通过质量、TP1 成本与历史反馈条件。预期收益是计划时的估计值，并不等于实现收益。
+
+## 主要模块
+
+| 功能 | 实现 |
+| --- | --- |
+| 市场结构 | `market_structure.py`、`market_state.py` |
+| 趋势磨损 | `trend_wear.py`：根据已平仓亏损、no-MFE 和止损等记录调低风险 |
+| 模式与入场权限 | `mode_router.py`、`confirmation.py`、`range_engine.py` |
+| 共振与信号 | `resonance.py`、`signal_score.py` |
+| 风险与组合 | `risk_ladder_v2.py`、`portfolio.py`、`governors.py`、`sizing.py` |
+| 执行与退出 | `execution.py`、`exits.py`、`scripts/mi/mi_guardian.py` |
+| 证据与报告 | `fills.py`、`attribution.py`、`counterfactual.py`、`performance.py` |
+
+v2.0.2 修复了趋势磨损统计中的关键口径：开仓成交常见的“已实现盈亏为零、手续费为负”不再被统计为趋势亏损；明确退出成交的费后亏损才参与相应计数。双向持仓成交优先使用 `posSide` 判断方向。详见 [v2.0.2 发布说明](docs/V2_0_2_RELEASE.md)。
+
+## 组合与退出约束
+
+默认最多两个活动仓位；组合、单仓和第二仓的保证金上限分别为权益的 60%、35% 和 30%。第二仓仍受市场模式与同向相关性约束；默认不混合多空组合，rotation 关闭。
+
+入场后设置交易所独立止损。Guardian 在本地评估硬止损、保本、部分止盈和移动止损，按合约步长处理减仓数量，并记录退出状态。当前架构中保本与 trailing 主要由本地 Guardian 执行；交易所侧止损取消和替换的进一步加固仍是文档中的后续工作。
+
+当入场已接受而止损创建失败时，执行层记录 `CRITICAL_ENTRY_STOP_FAILED_AFTER_ORDER`。这类记录用于暴露执行异常，不能解释为仓位已经获得保护。
 
 ## 仓库结构
 
-- `jarvis_mi/`：主流币策略核心代码。
-- `scripts/mi/`：cron/运维脚本；`mi_live_cycle.py` 可能触发实盘下单。
-- `tests/mi/`：回归测试。
-- `docs/`：架构、运行手册、版本发布说明。
-- `AGENTS.md`：给未来 AI agent 的项目边界、红线和命令速查。
-- `VERSIONING.md`：版本标签含义。
-
-## 验证命令
-
-```bash
-cd /root/jarvis-mi
-export PYTHONPATH=/root/jarvis-mi
-python3 -m compileall -q jarvis_mi scripts/mi tests/mi
-python3 -m unittest discover -s tests/mi -v
-python3 -m pytest -q tests/mi -o 'addopts='
-python3 scripts/mi/mi_healthcheck.py
-python3 scripts/mi/mi_sync_fills.py
-python3 scripts/mi/mi_attribution_audit.py
+```text
+jarvis_mi/                 # 策略、风险、执行、归因与状态模块
+scripts/mi/                # 交易周期、Guardian、同步、审计与日报入口
+tests/mi/                  # 22 个测试文件，含 unittest 与 pytest 风格用例
+docs/                      # 架构、运行手册、发布与收尾记录
+AGENTS.md                  # 项目边界和历史部署约定
+VERSIONING.md              # 版本约定
 ```
 
-`mi_live_cycle.py` 和 `mi_guardian.py` 属于实盘链路脚本，只有在明确需要实盘动作或运维检查时运行。
+## 阅读与代码检查
 
-## 安全边界
+建议先阅读 [架构说明](docs/HERMES_MI_ARCHITECTURE.md)，再查看 [v2.0.0 基础版本](docs/V2_0_0_RELEASE.md)、[v2.0.1 执行观测修补](docs/V2_0_1_RELEASE.md)、[v2.0.2 统计口径修补](docs/V2_0_2_RELEASE.md) 和 [最终收尾](docs/EXPERIMENT_CLOSEOUT_20260615.md)。
 
-私有 GitHub 不是秘密库。以下内容永不提交：`.env`、API key、OKX 凭证、Feishu webhook、账户/持仓/成交 JSON、运行时 ledger、日报、`data/`、`reports/`。
+在仓库根目录进行语法检查：
+
+```bash
+export PYTHONPATH="$PWD"
+python3 -m compileall -q jarvis_mi scripts/mi tests/mi
+```
+
+已有测试入口：
+
+```bash
+python3 -m unittest discover -s tests/mi -v
+python3 -m pytest -q tests/mi -o 'addopts='
+```
+
+第二条需要 `pytest`，用于补充第一条未发现的函数式用例。仓库未提供锁定依赖环境。`config_mi.py` 将运行数据固定在 `/root/jarvis-mi/data/mi`，本地恢复和测试时需先确认路径隔离。
+
+## 历史运维入口
+
+| 脚本 | 用途 |
+| --- | --- |
+| `mi_healthcheck.py` | 账户与状态检查，需运行环境和凭证 |
+| `mi_sync_fills.py` | 读取交易所成交并更新本地账本 |
+| `mi_attribution_audit.py` | 读取本地账本，汇总车道、near-miss、方向与退出归因 |
+| `mi_daily_review.py` | 基于本地记录生成日报 |
+| `mi_live_cycle.py` | 完整交易周期，通过门控后可以下单 |
+| `mi_guardian.py` | 持仓管理，可以减仓或平仓 |
+
+已有本地账本时，可按北京时间日期查看归因：
+
+```bash
+python3 scripts/mi/mi_attribution_audit.py --day 2026-06-14 --json
+```
+
+仅克隆仓库时没有历史账本，审计可能显示 `No fill data found.`。Mi 不使用 Unified 的实盘环境变量门控；不能把执行脚本当作离线检查命令。历史部署、暂停和恢复流程见 [Runbook](docs/RUNBOOK.md)。
+
+## 研究结果与归档边界
+
+项目保留了主流币结构分类、模式风险、成本约束、趋势磨损与退出归因的实现。交易所成交是已实现盈亏的依据，候选评分、预期收益和局部交易样本不能替代完整绩效评估。
+
+本仓库未提交完整成交、账户快照、运行状态或训练式绩效汇总，无法仅由源码复核全周期收益。`data/`、运行时 `reports/`、凭证和 Webhook 均留在生产或本地归档中。账户隔离与凭证前缀不能与其他 Jarvis 项目混用。
